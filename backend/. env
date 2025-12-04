@@ -1,0 +1,10 @@
+PORT=5000
+
+# Your MongoDB connection string
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/afyalink
+
+# JWT secret for token signing
+JWT_SECRET=Alfayo_Mangoe
+
+# Allowed frontend domain
+FRONTEND_URL=https://afya-link-hrms-ayvfnntsp-goldedge-labs-s-projects.vercel.app
