@@ -5,7 +5,7 @@ services:
   - type: web
     name: afyalink-backend
     env: node
-    rootDir: AfyaLink-HRMS-Cleaned/backend
+    rootDir: backend
     buildCommand: "npm install"
     startCommand: "node server.js"
     envVars:
@@ -20,12 +20,12 @@ services:
     plan: free
 
   # --------------------------------
-  # 2. Frontend (React + Vite/CRA)
+  # 2. Frontend (React)
   # --------------------------------
   - type: web
     name: afyalink-frontend
     env: static
-    rootDir: AfyaLink-HRMS-Cleaned/frontend
+    rootDir: frontend
     buildCommand: "npm install && npm run build"
     staticPublishPath: "build"
     envVars:
@@ -41,7 +41,7 @@ services:
   - type: web
     name: afyalink-ai
     env: python
-    rootDir: AfyaLink-HRMS-Cleaned/ai_module
+    rootDir: ai_service
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python anomaly_detector.py"
     envVars:
