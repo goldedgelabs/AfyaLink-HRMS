@@ -1,49 +1,27 @@
-import Patient from "../models/Patient.js";
-import User from "../models/User.js";
-import { io } from "../server.js";
+import Patient from '../models/Patient.js';
 
-// Get all patients (Hospital Admin)
-export const getPatients = async (req,res) => {
+export const createPatient = async (req, res, next) => {
   try {
-    const patients = await Patient.find().populate("user assignedDoctor assignedNurse");
+    const p = await Patient.create(req.body);
+    res.json(p);
+  } catch (err) { next(err); }
+};
+
+export const getPatient = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const p = await Patient.findById(id).populate('hospital primaryDoctor medicalRecords');
+    if (!p) return res.status(404).json({ message: 'Patient not found' });
+    res.json(p);
+  } catch (err) { next(err); }
+};
+
+export const searchPatients = async (req, res, next) => {
+  try {
+    const q = req.query.q || '';
+    const patients = await Patient.find({ $or:[
+      { firstName: new RegExp(q, 'i') }, { lastName: new RegExp(q, 'i') }, { nationalId: new RegExp(q,'i') }
+    ]}).limit(50);
     res.json(patients);
-  } catch(err) { res.status(500).json({ message: err.message }); }
-};
-
-// Get assigned patients (Doctor/Nurse)
-export const getAssignedPatients = async (req,res) => {
-  try {
-    const patients = await Patient.find({
-      $or: [{ assignedDoctor: req.user._id }, { assignedNurse: req.user._id }]
-    }).populate("user assignedDoctor assignedNurse");
-    res.json(patients);
-  } catch(err) { res.status(500).json({ message: err.message }); }
-};
-
-// Create patient
-export const createPatient = async (req,res) => {
-  try {
-    const { user, assignedDoctor, assignedNurse } = req.body;
-    const patient = await Patient.create({ user, assignedDoctor, assignedNurse });
-    io.emit("notification", { message: "New patient added!" });
-    res.status(201).json(patient);
-  } catch(err) { res.status(500).json({ message: err.message }); }
-};
-
-// Update patient
-export const updatePatient = async (req,res) => {
-  try {
-    const patient = await Patient.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    io.emit("notification", { message: "Patient updated!" });
-    res.json(patient);
-  } catch(err) { res.status(500).json({ message: err.message }); }
-};
-
-// Delete patient
-export const deletePatient = async (req,res) => {
-  try {
-    await Patient.findByIdAndDelete(req.params.id);
-    io.emit("notification", { message: "Patient deleted!" });
-    res.json({ message: "Patient deleted" });
-  } catch(err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 };

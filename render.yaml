@@ -1,61 +1,13 @@
 services:
-  # ===============================
-  # Backend (Node.js)
-  # ===============================
   - type: web
-    name: afyalink-backend
+    name: AfyaLink-backend
     env: node
-    rootDir: backend
-    buildCommand: "npm install"
-    startCommand: "node server.js"
-    plan: free
-
-    envVars:
-      - key: MONGO_URI
-        sync: false
-      - key: JWT_SECRET
-        sync: false
-      - key: AI_SERVICE_URL
-        value: https://afyalink-ai.onrender.com
-      - key: PORT
-        value: 10000
-
-    autoDeploy: true
-    healthCheckPath: /api/health
-
-  # ===============================
-  # Frontend (React - Static Hosting)
-  # ===============================
+    repo: your/repo
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node server.js
   - type: web
-    name: afyalink-frontend
+    name: AfyaLink-frontend
     env: static
-    rootDir: frontend
-    buildCommand: "npm install && npm run build"
-    staticPublishPath: build
-    plan: free
-
-    envVars:
-      - key: REACT_APP_API_URL
-        value: https://afyalink-backend.onrender.com
-      - key: REACT_APP_AI_URL
-        value: https://afyalink-ai.onrender.com
-
-    autoDeploy: true
-
-  # ===============================
-  # AI Service (Python Flask)
-  # ===============================
-  - type: web
-    name: afyalink-ai
-    env: python
-    rootDir: ai_service
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python anomaly_detector.py"
-    plan: free
-
-    envVars:
-      - key: PORT
-        value: 5000
-
-    autoDeploy: true
-    healthCheckPath: /health
+    repo: your/repo
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: rm -f /tmp/placeholder

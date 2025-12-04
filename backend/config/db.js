@@ -1,12 +1,20 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+dotenv.config();
 
-async function connectDB() {
-  const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/afyalink';
-  await mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
-  console.log('Connected to MongoDB');
-}
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/afyalink';
 
-module.exports = { connectDB };
+const connectDB = async () => {
+  try {
+    await mongoose.connect(MONGO_URI, {
+      // useNewUrlParser: true,
+      // useUnifiedTopology: true,
+    });
+    console.log('MongoDB connected');
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  }
+};
+
+export default connectDB;

@@ -1,0 +1,8 @@
+{
+  "name": "afyalink-hrms",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
+}

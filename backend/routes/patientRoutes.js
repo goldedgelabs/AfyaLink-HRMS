@@ -1,25 +1,10 @@
-// routes/patientRoutes.js
 import express from 'express';
-import { authenticate, authorize } from '../middleware/authMiddleware.js';
-import {
-  getAllPatients,
-  getPatientById,
-  createPatient,
-  updatePatient,
-  deletePatient
-} from '../controllers/patientController.js';
-
+import { createPatient, getPatient, searchPatients } from '../controllers/patientController.js';
+import { protect } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
-// Hospital Admin, Doctor, Nurse
-router.use(authenticate);
-
-router.get('/', authorize(['hospitaladmin', 'doctor', 'nurse']), getAllPatients);
-router.get('/:id', authorize(['hospitaladmin', 'doctor', 'nurse', 'patient']), getPatientById);
-
-// Only hospital admin can create/update/delete
-router.post('/', authorize(['hospitaladmin']), createPatient);
-router.put('/:id', authorize(['hospitaladmin']), updatePatient);
-router.delete('/:id', authorize(['hospitaladmin']), deletePatient);
+router.post('/', protect, createPatient);
+router.get('/search', protect, searchPatients);
+router.get('/:id', protect, getPatient);
 
 export default router;

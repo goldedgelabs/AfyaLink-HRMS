@@ -1,122 +1,49 @@
-// controllers/appointmentController.js
-const Appointment = require("../models/Appointment");
+import Appointment from '../models/Appointment.js';
+import { getIO } from '../utils/socket.js';
+import Patient from '../models/Patient.js';
 
-// Get IO instance without circular import
-const getIO = () => {
-  const { io } = require("../serverInstance");
-  return io;
+export const createAppointment = async (req, res, next) => {
+  try {
+    const payload = req.body;
+    if (!payload.patient || !payload.scheduledAt) return res.status(400).json({message:'patient and scheduledAt required'});
+    const a = await Appointment.create(payload);
+    try { getIO().to(String(a.doctor)).emit('appointmentCreated', a); } catch(e){}
+    res.json(a);
+  } catch (err) { next(err); }
 };
 
-// =============================
-// Get ALL appointments (Admin)
-// =============================
-exports.getAppointments = async (req, res) => {
+export const getAppointment = async (req, res, next) => {
   try {
-    const appointments = await Appointment.find()
-      .populate("patient")
-      .populate("doctor");
-
-    res.json(appointments);
-  } catch (err) {
-    console.error("Error fetching appointments:", err);
-    res.status(500).json({ error: "Server error" });
-  }
+    const a = await Appointment.findById(req.params.id).populate('patient doctor hospital');
+    if (!a) return res.status(404).json({message:'Not found'});
+    res.json(a);
+  } catch (err) { next(err); }
 };
 
-// =======================================
-// Get LOGGED-IN user's appointments
-// (Doctor or Patient)
-// =======================================
-exports.getMyAppointments = async (req, res) => {
+export const listAppointments = async (req, res, next) => {
   try {
-    let filter = {};
-
-    if (req.user.role === "doctor") filter = { doctor: req.user._id };
-    if (req.user.role === "patient") filter = { patient: req.user._id };
-
-    const appointments = await Appointment.find(filter)
-      .populate("patient")
-      .populate("doctor");
-
-    res.json(appointments);
-  } catch (err) {
-    console.error("Error fetching user appointments:", err);
-    res.status(500).json({ error: "Server error" });
-  }
+    const filter = {};
+    if (req.query.hospital) filter.hospital = req.query.hospital;
+    if (req.query.doctor) filter.doctor = req.query.doctor;
+    const items = await Appointment.find(filter).populate('patient doctor hospital').limit(1000);
+    res.json(items);
+  } catch (err) { next(err); }
 };
 
-// =============================
-// Create Appointment
-// =============================
-exports.createAppointment = async (req, res) => {
+export const updateAppointment = async (req, res, next) => {
   try {
-    const appointment = await Appointment.create(req.body);
-
-    // 🔥 Real-time notification
-    getIO().emit("notification", {
-      type: "appointment",
-      title: "New Appointment",
-      message: "A new appointment has been created.",
-      createdAt: new Date(),
-    });
-
-    res.status(201).json(appointment);
-  } catch (err) {
-    console.error("Error creating appointment:", err);
-    res.status(500).json({ error: "Server error" });
-  }
+    const a = await Appointment.findByIdAndUpdate(req.params.id, req.body, {new:true});
+    if (!a) return res.status(404).json({message:'Not found'});
+    try { getIO().to(String(a.patient)).emit('appointmentUpdated', a); } catch(e){}
+    res.json(a);
+  } catch (err) { next(err); }
 };
 
-// =============================
-// Update Appointment
-// =============================
-exports.updateAppointment = async (req, res) => {
+export const deleteAppointment = async (req, res, next) => {
   try {
-    const appointment = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-
-    if (!appointment)
-      return res.status(404).json({ message: "Appointment not found" });
-
-    // 🔥 Real-time notification
-    getIO().emit("notification", {
-      type: "appointment",
-      title: "Appointment Updated",
-      message: `Appointment ${req.params.id} has been updated.`,
-      createdAt: new Date(),
-    });
-
-    res.json(appointment);
-  } catch (err) {
-    console.error("Error updating appointment:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
-// =============================
-// Delete Appointment
-// =============================
-exports.deleteAppointment = async (req, res) => {
-  try {
-    const deleted = await Appointment.findByIdAndDelete(req.params.id);
-
-    if (!deleted)
-      return res.status(404).json({ message: "Appointment not found" });
-
-    // 🔥 Real-time notification
-    getIO().emit("notification", {
-      type: "appointment",
-      title: "Appointment Deleted",
-      message: `Appointment ${req.params.id} was deleted.`,
-      createdAt: new Date(),
-    });
-
-    res.json({ message: "Deleted" });
-  } catch (err) {
-    console.error("Error deleting appointment:", err);
-    res.status(500).json({ error: "Server error" });
-  }
+    const a = await Appointment.findByIdAndDelete(req.params.id);
+    if (!a) return res.status(404).json({message:'Not found'});
+    try { getIO().to(String(a.patient)).emit('appointmentDeleted', a); } catch(e){}
+    res.json({message:'deleted'});
+  } catch (err) { next(err); }
 };

@@ -1,39 +1,25 @@
-// middleware/authMiddleware.js
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
-/**
- * Authenticate user via JWT token in Authorization header
- */
-export const authenticate = async (req, res, next) => {
+export const protect = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'No token, authorization denied' });
+    let token;
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith('Bearer')) {
+      token = auth.split(' ')[1];
+    } else if (req.cookies.token) {
+      token = req.cookies.token;
     }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
-
+    if (!token) return res.status(401).json({message:'Not authorized'});
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_this_secret');
     const user = await User.findById(decoded.id).select('-password');
-    if (!user) return res.status(401).json({ success: false, message: 'User not found' });
-
-    req.user = user; // attach user object to request
+    if (!user) return res.status(401).json({message:'User not found'});
+    req.user = user;
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err.message);
-    return res.status(401).json({ success: false, message: 'Token is not valid' });
+    console.error(err);
+    return res.status(401).json({message:'Not authorized'});
   }
-};
-
-/**
- * Role-based authorization
- * @param {Array} allowedRoles - list of roles allowed to access this route
- */
-export const authorize = (allowedRoles = []) => (req, res, next) => {
-  if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-  if (allowedRoles.length && !allowedRoles.includes(req.user.role)) {
-    return res.status(403).json({ success: false, message: 'Forbidden - insufficient role' });
-  }
-  next();
 };

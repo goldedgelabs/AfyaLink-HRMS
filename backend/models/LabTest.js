@@ -1,14 +1,14 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
+const { Schema, model } = mongoose;
 
-const labTestSchema = new mongoose.Schema({
-  patient: { type: mongoose.Schema.Types.ObjectId, ref: "Patient", required: true },
-  requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // usually doctor
-  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // labtech
-  testType: { type: String, required: true },
-  results: String,
-  status: { type: String, enum: ["pending", "inprogress", "completed"], default: "pending" },
-  completedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  createdAt: { type: Date, default: Date.now },
-});
+const labTestSchema = new Schema({
+  patient: { type: Schema.Types.ObjectId, ref: 'Patient' },
+  orderedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  hospital: { type: Schema.Types.ObjectId, ref: 'Hospital' },
+  testType: String,
+  status: { type: String, enum:['Ordered','InProgress','Completed','Reviewed'], default: 'Ordered' },
+  result: { type: Object },
+  notes: String,
+}, { timestamps: true });
 
-export default mongoose.model("LabTest", labTestSchema);
+export default model('LabTest', labTestSchema);

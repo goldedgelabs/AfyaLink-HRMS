@@ -1,23 +1,10 @@
-// routes/hospitalRoutes.js
 import express from 'express';
-import { authenticate, authorize } from '../middleware/authMiddleware.js';
-import {
-  getAllHospitals,
-  getHospitalById,
-  createHospital,
-  updateHospital,
-  deleteHospital
-} from '../controllers/hospitalController.js';
-
+import { createHospital, listHospitals } from '../controllers/hospitalController.js';
+import { protect } from '../middleware/authMiddleware.js';
+import { permit } from '../middleware/roleMiddleware.js';
 const router = express.Router();
 
-// Only superadmin can manage hospitals
-router.use(authenticate, authorize(['superadmin']));
-
-router.get('/', getAllHospitals);
-router.get('/:id', getHospitalById);
-router.post('/', createHospital);
-router.put('/:id', updateHospital);
-router.delete('/:id', deleteHospital);
+router.post('/', protect, permit('SuperAdmin'), createHospital);
+router.get('/', protect, permit('SuperAdmin','HospitalAdmin'), listHospitals);
 
 export default router;

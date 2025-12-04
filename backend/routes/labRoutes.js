@@ -1,21 +1,14 @@
-// routes/labRoutes.js
 import express from 'express';
-import { authenticate, authorize } from '../middleware/authMiddleware.js';
-import {
-  getLabTests,
-  getLabTestById,
-  createLabRequest,
-  updateLabResult
-} from '../controllers/labController.js';
-
+import { orderTest, uploadResult, listLabs, getLab, updateLab, deleteLab } from '../controllers/labController.js';
+import { protect } from '../middleware/authMiddleware.js';
+import { permit } from '../middleware/roleMiddleware.js';
 const router = express.Router();
 
-router.use(authenticate);
-
-// Doctors can create lab requests, labtech can update results
-router.get('/', authorize(['hospitaladmin', 'doctor', 'labtech']), getLabTests);
-router.get('/:id', authorize(['hospitaladmin', 'doctor', 'labtech']), getLabTestById);
-router.post('/', authorize(['doctor']), createLabRequest);
-router.put('/:id', authorize(['labtech']), updateLabResult);
+router.post('/', protect, permit('Doctor','HospitalAdmin'), orderTest);
+router.get('/', protect, permit('LabTech','Doctor','HospitalAdmin'), listLabs);
+router.get('/:id', protect, getLab);
+router.post('/:id/result', protect, permit('LabTech','Doctor'), uploadResult);
+router.patch('/:id', protect, permit('LabTech','Doctor'), updateLab);
+router.delete('/:id', protect, permit('HospitalAdmin','SuperAdmin'), deleteLab);
 
 export default router;

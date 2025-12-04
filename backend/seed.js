@@ -1,48 +1,25 @@
-/**
- * Seed script - creates sample users, patients, and appointments.
- * Run: node seed.js (ensure MONGO_URI in env or defaults to localhost)
- */
-require('dotenv').config();
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const User = require('./models/User');
-const Patient = require('./models/Patient');
-const Appointment = require('./models/Appointment');
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import connectDB from './config/db.js';
+import Hospital from './models/Hospital.js';
+import User from './models/User.js';
+import Patient from './models/Patient.js';
+dotenv.config();
 
-const MONGO = process.env.MONGO_URI || 'mongodb://localhost:27017/afyalink-demo';
-
-async function seed(){
-  await mongoose.connect(MONGO);
-  console.log('Connected to DB');
+const run = async ()=>{
+  await connectDB();
+  console.log('Seeding...');
+  await Hospital.deleteMany({});
   await User.deleteMany({});
   await Patient.deleteMany({});
-  await Appointment.deleteMany({});
+  const h = await Hospital.create({name:'Demo Hospital', code:'DEMO-001', address:'123 Health St', contact:'+254700000000'});
+  const superAdmin = await User.create({name:'Super Admin', email:'super@afya.test', password:'password', role:'SuperAdmin'});
+  const admin = await User.create({name:'Hospital Admin', email:'admin@demo.test', password:'password', role:'HospitalAdmin', hospital: h._id});
+  const doc = await User.create({name:'Dr. Alice', email:'alice@demo.test', password:'password', role:'Doctor', hospital: h._id});
+  const nurse = await User.create({name:'Nurse Bob', email:'bob@demo.test', password:'password', role:'Nurse', hospital: h._id});
+  const patient = await Patient.create({firstName:'John', lastName:'Doe', dob:new Date('1980-01-01'), nationalId:'P123456', countryId:'NHIF-0001', hospital: h._id, primaryDoctor: doc._id});
+  console.log('Seeded:', {h, superAdmin, admin, doc, nurse, patient});
+  process.exit(0);
+};
 
-  const users = [
-    { name: 'Admin User', email: 'admin@afya.test', password: await bcrypt.hash('adminpass',10), role: 'admin' },
-    { name: 'Dr. Asha', email: 'dr.asha@afya.test', password: await bcrypt.hash('docpass',10), role: 'doctor' },
-    { name: 'Nurse John', email: 'nurse.john@afya.test', password: await bcrypt.hash('nursepass',10), role: 'nurse' },
-    { name: 'Patient Mary', email: 'mary@afya.test', password: await bcrypt.hash('patientpass',10), role: 'patient' }
-  ];
-  const createdUsers = await User.insertMany(users);
-  console.log('Users created');
-
-  const patients = [
-    { firstName: 'Mary', lastName: 'Wanjiru', dob: new Date(1990,1,1), gender: 'female', contact: '0700000000', address: 'Nairobi', medicalHistory: ['hypertension'] },
-    { firstName: 'James', lastName: 'Otieno', dob: new Date(1985,5,20), gender: 'male', contact: '0711111111', address: 'Kisumu', medicalHistory: [] }
-  ];
-  const createdPatients = await Patient.insertMany(patients);
-  console.log('Patients created');
-
-  const appts = [
-    { patientId: createdPatients[0]._id, doctorId: createdUsers[1]._id, date: new Date(Date.now()+86400000), reason: 'Follow-up' },
-    { patientId: createdPatients[1]._id, doctorId: createdUsers[1]._id, date: new Date(Date.now()+172800000), reason: 'New complaint' }
-  ];
-  await Appointment.insertMany(appts);
-  console.log('Appointments created');
-
-  mongoose.connection.close();
-  console.log('Done');
-}
-
-seed().catch(err => { console.error(err); process.exit(1); });
+run().catch(e=>{console.error(e); process.exit(1);});

@@ -1,11 +1,14 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
+const { Schema, model } = mongoose;
 
-const hospitalSchema = new mongoose.Schema({
+const hospitalSchema = new Schema({
   name: { type: String, required: true },
-  address: String,
-  contact: String,
-  admin: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // hospital admin
-  createdAt: { type: Date, default: Date.now },
-});
+  code: { type: String, unique: true, required: true },
+  address: { type: String },
+  contact: { type: String },
+  metadata: { type: Object, default: {} },
+  financialSettings: { type: Object, default: {} },
+  active: { type: Boolean, default: true },
+}, { timestamps: true });
 
-export default mongoose.model("Hospital", hospitalSchema);
+export default model('Hospital', hospitalSchema);
