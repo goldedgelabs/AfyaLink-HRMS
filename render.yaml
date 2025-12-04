@@ -1,13 +1,15 @@
 services:
-  # --------------------------------
-  # 1. Backend (Node.js + Express)
-  # --------------------------------
+  # ===============================
+  # Backend (Node.js)
+  # ===============================
   - type: web
     name: afyalink-backend
     env: node
     rootDir: backend
     buildCommand: "npm install"
     startCommand: "node server.js"
+    plan: free
+
     envVars:
       - key: MONGO_URI
         sync: false
@@ -17,34 +19,43 @@ services:
         value: https://afyalink-ai.onrender.com
       - key: PORT
         value: 10000
-    plan: free
 
-  # --------------------------------
-  # 2. Frontend (React)
-  # --------------------------------
+    autoDeploy: true
+    healthCheckPath: /api/health
+
+  # ===============================
+  # Frontend (React - Static Hosting)
+  # ===============================
   - type: web
     name: afyalink-frontend
     env: static
     rootDir: frontend
     buildCommand: "npm install && npm run build"
-    staticPublishPath: "build"
+    staticPublishPath: build
+    plan: free
+
     envVars:
       - key: REACT_APP_API_URL
         value: https://afyalink-backend.onrender.com
       - key: REACT_APP_AI_URL
         value: https://afyalink-ai.onrender.com
-    plan: free
 
-  # --------------------------------
-  # 3. AI Microservice (Python Flask)
-  # --------------------------------
+    autoDeploy: true
+
+  # ===============================
+  # AI Service (Python Flask)
+  # ===============================
   - type: web
     name: afyalink-ai
     env: python
     rootDir: ai_service
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python anomaly_detector.py"
+    plan: free
+
     envVars:
       - key: PORT
         value: 5000
-    plan: free
+
+    autoDeploy: true
+    healthCheckPath: /health
