@@ -1,11 +1,15 @@
 import axios from 'axios';
 
+// Set the base URL depending on environment
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
-  withCredentials: true // important for cookies
+  baseURL: process.env.REACT_APP_API_URL || 
+           (process.env.NODE_ENV === 'production' 
+             ? 'https://afyalink-hrms-4.onrender.com/api' 
+             : 'http://localhost:5000/api'),
+  withCredentials: true // Important for cookies
 });
 
-// Attach token if present
+// Attach JWT token if present
 API.interceptors.request.use(cfg => {
   const token = localStorage.getItem('token');
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
