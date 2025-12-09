@@ -3,7 +3,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import connectDB from './config/db.js';
+import dotenvExpand from 'dotenv-expand';
+
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import hospitalRoutes from './routes/hospitalRoutes.js';
@@ -15,20 +16,24 @@ import transferRoutes from './routes/transferRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import mlRoutes from './routes/mlRoutes.js';
-import errorHandler from './middleware/errorHandler.js';
-import dotenvExpand from 'dotenv-expand';
 
-const myEnv = dotenv.config();
-dotenvExpand.expand(myEnv);
+import errorHandler from './middleware/errorHandler.js';
+
+// Load and expand environment variables
+const env = dotenv.config();
+dotenvExpand.expand(env);
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*', // allow your frontend
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+}));
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(morgan('dev'));
-
-// connect DB when app starts in server.js (so tests can control it)
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -43,6 +48,10 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ml', mlRoutes);
 
+// Optional: simple root route to verify server is live
+app.get('/', (req, res) => res.send('AfyaLink HRMS Backend is running 🚀'));
+
+// Error handling middleware
 app.use(errorHandler);
 
 export default app;
