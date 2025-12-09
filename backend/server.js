@@ -8,16 +8,38 @@ import { initSocket } from './utils/socket.js';
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
+const FRONTEND = process.env.FRONTEND_URL || "*";
 
 const start = async () => {
-  await connectDB();
-  const server = http.createServer(app);
-  const io = new IOServer(server, { cors: { origin: process.env.FRONTEND_URL || '*', credentials: true } });
-  initSocket(io);
-  server.listen(PORT, () => console.log(`AfyaLink HRMS backend listening on ${PORT}`));
+  try {
+    // Connect database
+    await connectDB();
+
+    // Create HTTP Express server
+    const server = http.createServer(app);
+
+    // Setup WebSocket server
+    const io = new IOServer(server, {
+      cors: {
+        origin: FRONTEND,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        credentials: true
+      }
+    });
+
+    // Initialize socket handlers
+    initSocket(io);
+
+    // Start backend server
+    server.listen(PORT, () => {
+      console.log(`\n🚀 AfyaLink HRMS backend running on port ${PORT}`);
+      console.log(`🌐 Allowed Frontend Origin: ${FRONTEND}\n`);
+    });
+
+  } catch (err) {
+    console.error("❌ Failed to start server", err);
+    process.exit(1);
+  }
 };
 
-start().catch(err => {
-  console.error('Failed to start server', err);
-  process.exit(1);
-});
+start();
