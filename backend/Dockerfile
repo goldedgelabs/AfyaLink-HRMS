@@ -2,16 +2,13 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy ONLY package.json first so npm sees the correct type=module
+# Copy only package.json
 COPY package.json ./
-COPY package-lock.json ./   # if exists
 
-# Force Node to treat project as ESM
-ENV NODE_OPTIONS="--experimental-modules"
-
+# Install dependencies
 RUN npm install --production
 
-# Copy full app
+# Copy rest of backend code
 COPY . .
 
 EXPOSE 5000
