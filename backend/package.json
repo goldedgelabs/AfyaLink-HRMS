@@ -24,7 +24,7 @@
     "uuid": "^9.0.1",
 
     "twilio": "^4.25.0",
-    "africastalking": "^2.4.0",
+    "africastalking": "^0.6.0",
 
     "nodemailer": "^6.9.16",
     "@sendgrid/mail": "7.7.0",
