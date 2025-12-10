@@ -18,7 +18,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import mlRoutes from './routes/mlRoutes.js';
 
-import errorHandler from './middleware/errorHandler.js';
+import errorHandler from './middleware/errorHandler.js'; // <-- FIXED DEFAULT IMPORT
 
 // Load and expand environment variables
 const env = dotenv.config();
@@ -27,11 +27,14 @@ dotenvExpand.expand(env);
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*', // allow your frontend
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-}));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  })
+);
+
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(morgan('dev'));
@@ -50,12 +53,11 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ml', mlRoutes);
 
-// Optional: simple root route to verify server is live
+// Root ping route
 app.get('/', (req, res) => res.send('AfyaLink HRMS Backend is running 🚀'));
 
-// Error handling middleware
+// Error handler
 app.use(errorHandler);
 
+// Export server
 export default app;
-
-app.use('/api/ai', require('./ai/aiRouter'));
