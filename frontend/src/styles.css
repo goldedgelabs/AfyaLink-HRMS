@@ -1,27 +1,72 @@
-/* Make all sidebar menu items pure white */
+/* --------------------------------------------
+   Premium Hospital Sidebar (Upgraded Styling)
+   -------------------------------------------- */
+
+/* Menu item spacing */
 .sidebar nav li {
   margin: 12px 0;
 }
 
+/* Base menu link */
 .sidebar nav a {
   color: #ffffff !important;
   text-decoration: none;
-  font-weight: 500;
-  display: block;
-  padding: 10px 12px;
-  border-radius: 8px;
-  transition: 0.2s ease;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 12px 14px;
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+
+  transition: 
+    background 0.25s ease,
+    transform 0.2s ease,
+    box-shadow 0.25s ease,
+    color 0.25s ease;
 }
 
-/* Hover effect */
+/* Hover effect - premium glass */
 .sidebar nav a:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.10);
   color: #ffffff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
-/* Active menu item */
+/* Active menu item - strong premium highlight */
 .sidebar nav a.active {
-  background: var(--accent);
+  background: linear-gradient(
+      135deg,
+      var(--accent),
+      color-mix(in srgb, var(--accent) 75%, #6d5dfc)
+  );
   color: #ffffff !important;
-  box-shadow: 0 0 12px rgba(79, 70, 229, 0.5);
+
+  box-shadow: 0 0 18px rgba(79, 70, 229, 0.55),
+              0 8px 24px rgba(0, 0, 0, 0.35);
+
+  transform: translateY(-1px);
+}
+
+/* Optional icon refinement (if you have icons) */
+.sidebar nav a i,
+.sidebar nav a svg {
+  opacity: 0.95;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Slight divider/section enhancement (optional) */
+.sidebar .section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 25px 0 8px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
 }
