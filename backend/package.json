@@ -23,7 +23,6 @@
     "morgan": "^1.10.0",
     "uuid": "^9.0.0",
     "twilio": "^4.0.0",
-    "africastalking": "^1.4.0",
     "nodemailer": "^6.9.0",
     "@sendgrid/mail": "^7.7.0",
     "bullmq": "^5.12.0",
