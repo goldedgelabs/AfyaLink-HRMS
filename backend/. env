@@ -7,4 +7,4 @@ MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/afyalink
 JWT_SECRET=Alfayo_Mangoe
 
 # Allowed frontend domain
-FRONTEND_URL=https://afya-link-hrms-d9ok.vercel.app
+FRONTEND_URL=https://afya-link-hrms-frontend-4.vercel.app
