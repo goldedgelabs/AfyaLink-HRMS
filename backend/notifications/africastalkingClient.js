@@ -1,17 +1,26 @@
+// notifications/africastalkingClient.js
+import axios from "axios";
 
-import africastalking from 'africastalking';
+export async function sendSMS(to, message) {
+  const apiKey = process.env.AT_API_KEY;
+  const username = process.env.AT_USERNAME;
 
-const at = africastalking({
-  apiKey: process.env.AT_API_KEY,
-  username: process.env.AT_USERNAME,
-});
-
-const sms = at.SMS;
-
-export const sendATSMS = async ({ to, message }) => {
-  return await sms.send({
+  const data = new URLSearchParams({
+    username,
     to,
-    message,
-    from: process.env.AT_SHORTCODE || "",
+    message
   });
-};
+
+  const headers = {
+    "apiKey": apiKey,
+    "Content-Type": "application/x-www-form-urlencoded"
+  };
+
+  const res = await axios.post(
+    "https://api.africastalking.com/version1/messaging",
+    data,
+    { headers }
+  );
+
+  return res.data;
+}
