@@ -1,0 +1,12 @@
+{
+  "name": "afyalink-hrms",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "lint": "eslint . --ext .js,.jsx || true",
+    "format": "prettier --write \"**/*.{js,jsx,json,md,css}\" || true"
+  }
+}

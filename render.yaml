@@ -1,0 +1,20 @@
+services:
+  # Backend Service
+  - type: web
+    name: AfyaLink-backend
+    env: node
+    repo: git@github.com:goldedgelabs/AfyaLink-HRMS.git
+    branch: main  # change if you use a different branch
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    plan: free  # optional, choose the Render plan
+
+# Frontend can be added later when ready
+#  - type: web
+#    name: AfyaLink-frontend
+#    env: static
+#    repo: git@github.com:goldedgelabs/AfyaLink-HRMS.git
+#    branch: main
+#    buildCommand: cd frontend && npm install && npm run build
+#    startCommand: rm -f /tmp/placeholder
+#    plan: starter
