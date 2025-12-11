@@ -24,6 +24,3 @@ export async function sendSMS(to, message) {
 
   return res.data;
 }
-
-// Auto-added alias export: sendSMS as sendATSMS
-export { sendSMS as sendATSMS };
