@@ -33,7 +33,9 @@
     "bull": "^4.10.0",
     "axios": "^1.5.0",
     "node-fetch": "^2.6.7",
-    "@medplum/fhirtypes": "^2.1.2"
+    "@medplum/fhirtypes": "^2.1.2",
+    "node-cron": "^3.0.3"
+
   },
   "devDependencies": {
     "nodemon": "^2.0.22",
