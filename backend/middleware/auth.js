@@ -14,4 +14,5 @@ const auth = (req, res, next) => {
   }
 };
 
-export default auth;      // ✅ REQUIRED FOR ESM IMPORTS
+export default auth;   // default export
+export { auth };       // named export (for routes using { auth })
