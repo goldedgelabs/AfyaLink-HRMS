@@ -1,5 +1,6 @@
 import crdtStore from './crdtStore.js';
-import Automerge from 'automerge';
+import { Automerge } from "automerge";
+
 
 // Helper document keys
 export const patientDocId = (hospitalId) => `patients:${hospitalId}`;
