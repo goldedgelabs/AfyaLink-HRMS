@@ -18,7 +18,10 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import mlRoutes from './routes/mlRoutes.js';
 
-import errorHandler from './middleware/errorHandler.js'; // <-- FIXED DEFAULT IMPORT
+// ✅ ADD M-PESA ROUTES
+import mpesaRoutes from './routes/mpesa.routes.js';
+
+import errorHandler from './middleware/errorHandler.js';
 
 // Load and expand environment variables
 const env = dotenv.config();
@@ -39,7 +42,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(morgan('dev'));
 
-// Routes
+// Main Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/hospitals', hospitalRoutes);
@@ -53,11 +56,13 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ml', mlRoutes);
 
-// Root ping route
+// ✅ M-PESA ROUTES
+app.use('/api/payments/mpesa', mpesaRoutes);
+
+// Root ping
 app.get('/', (req, res) => res.send('AfyaLink HRMS Backend is running 🚀'));
 
 // Error handler
 app.use(errorHandler);
 
-// Export server
 export default app;
