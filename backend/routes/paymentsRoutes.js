@@ -1,11 +1,21 @@
-import express from 'express';
-import { createStripePaymentIntent, mpesaStkPush, flutterwaveCharge, listTransactions, generateInvoice } from '../controllers/paymentsController.js';
+import express from "express";
+import {
+  createStripeIntent,
+  handleStripeWebhook,
+  mpesaSTKPush,
+  flutterwaveInit
+} from "../controllers/paymentsController.js";
+
 const router = express.Router();
 
-router.post('/stripe/create-payment-intent', createStripePaymentIntent);
-router.post('/mpesa/stk', mpesaStkPush);
-router.post('/flutterwave/charge', flutterwaveCharge);
-router.get('/transactions', listTransactions);
-router.post('/invoice', generateInvoice);
+// STRIPE
+router.post("/stripe/intent", createStripeIntent);
+router.post("/stripe/webhook", handleStripeWebhook);
+
+// MPESA
+router.post("/mpesa/stkpush", mpesaSTKPush);
+
+// FLUTTERWAVE
+router.post("/flutterwave/init", flutterwaveInit);
 
 export default router;
