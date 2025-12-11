@@ -2,14 +2,19 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy only package.json
-COPY package.json ./
+# Copy root workspace files (needed for npm workspaces)
+COPY ../package.json ../package-lock.json* ./
 
-# Install dependencies
-RUN npm install --production
+# Copy only backend package.json into a folder named backend/
+COPY package.json backend/package.json
 
-# Copy rest of backend code
-COPY . .
+# Install only backend workspace dependencies
+RUN npm install --production --workspace backend
+
+# Now copy backend source code
+COPY . backend/
+
+WORKDIR /app/backend
 
 EXPOSE 5000
 
