@@ -1,5 +1,6 @@
 import crdtStore from './crdtStore.js';
-import { Automerge } from "automerge";
+import * as Automerge from "@automerge/automerge";
+
 
 
 // Helper document keys
