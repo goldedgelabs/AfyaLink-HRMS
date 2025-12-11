@@ -1,27 +1,57 @@
-import express from 'express';
-import { loadDoc, saveDoc, applyChanges } from '../services/crdtStore.js';
-import Automerge from 'automerge';
+import express from "express";
+import * as Automerge from "@automerge/automerge"; // v2 package name
 const router = express.Router();
 
-// Get full doc (base64 encoded binary)
-router.get('/:docId', async (req,res)=>{
-  try{
-    const doc = await loadDoc(req.params.docId);
-    const bin = Automerge.save(doc);
-    res.json({ ok:true, bin: Buffer.from(bin).toString('base64') });
-  }catch(err){ res.status(500).json({ error: err.message }); }
+/**
+ * In-memory documents store (replace with Redis or Mongo later)
+ */
+const docs = {};
+
+/**
+ * Create new CRDT document
+ */
+router.post("/create", (req, res) => {
+  const { docId, initial } = req.body;
+
+  const doc = Automerge.from(initial || {});
+
+  const binary = Automerge.save(doc);
+  docs[docId] = binary;
+
+  res.json({ ok: true, doc });
 });
 
-// Push changes (client sends base64-encoded changes array)
-router.post('/:docId/changes', async (req,res)=>{
-  try{
-    const { changes } = req.body; // array of base64 strings representing Automerge changes
-    const doc = await loadDoc(req.params.docId);
-    const changesBufs = (changes||[]).map(c=>Buffer.from(c, 'base64'));
-    const newDoc = applyChanges(doc, changesBufs);
-    await saveDoc(req.params.docId, newDoc);
-    res.json({ ok:true });
-  }catch(err){ res.status(500).json({ error: err.message }); }
+/**
+ * Apply a CRDT change patch
+ */
+router.post("/update", (req, res) => {
+  const { docId, changes } = req.body;
+
+  if (!docs[docId]) return res.status(404).json({ ok: false, error: "Not found" });
+
+  let doc = Automerge.load(docs[docId]);
+
+  const [newDoc, patchInfo] = Automerge.applyChanges(doc, changes);
+  docs[docId] = Automerge.save(newDoc);
+
+  res.json({
+    ok: true,
+    doc: newDoc,
+    patch: patchInfo
+  });
+});
+
+/**
+ * Fetch full document
+ */
+router.get("/:docId", (req, res) => {
+  const id = req.params.docId;
+
+  if (!docs[id]) return res.status(404).json({ ok: false, error: "Not found" });
+
+  const doc = Automerge.load(docs[id]);
+
+  res.json({ ok: true, doc });
 });
 
 export default router;
