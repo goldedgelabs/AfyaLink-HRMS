@@ -1,12 +1,8 @@
+// notifications/twilioClient.js
 
-import twilio from 'twilio';
-
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-
-export const sendTwilioSMS = async ({ to, message }) => {
-  return await client.messages.create({
-    body: message,
-    to,
-    from: process.env.TWILIO_PHONE_NUMBER,
-  });
-};
+export async function sendTwilioSMS() {
+  return {
+    disabled: true,
+    message: "Twilio is currently disabled (missing credentials)",
+  };
+}
