@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AfyaLink Peer Demo</title></head>
+<body>
+<h2>AfyaLink Peer Demo</h2>
+<p>Opens two windows and connects them via signaling server (no TURN needed on LAN).</p>
+<button id="open">Open Two Peers</button>
+<script>
+function openPeer(name){
+  const w = window.open('', name, 'width=600,height=400');
+  w.document.write('<h3>Peer: ' + name + '</h3><div id=log></div><script>window.onload=function(){ document.body.appendChild(document.createElement("script")).src="https://cdn.socket.io/4.5.0/socket.io.min.js"; }<\/script>');
+  return w;
+}
+document.getElementById('open').onclick = ()=>{
+  const a = openPeer('peerA');
+  const b = openPeer('peerB');
+  setTimeout(()=>{ alert('Two windows opened. Use your browser console in each to run peer code and connect via signaling server.'); }, 500);
+};
+</script>
+</body>
+</html>

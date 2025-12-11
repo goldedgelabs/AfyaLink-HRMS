@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  signaling:
+    build:
+      context: .
+      dockerfile: Dockerfile.signaling
+    environment:
+      - SIGNALING_JWT_SECRET=${SIGNALING_JWT_SECRET}
+    ports:
+      - "5005:5005"
+  coturn:
+    image: instrumentisto/coturn
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+    environment:
+      - REALM=afyalink.local
+      - LISTEN=0.0.0.0
+      - EXTERNAL_IP=${EXTERNAL_IP}
+      - USER=${TURN_USER}:${TURN_PASS}

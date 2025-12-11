@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head><meta charset='utf-8'><title>AfyaLink WebRTC Local Demo</title></head>
+<body>
+<h2>AfyaLink Local WebRTC Demo (2 peers in page)</h2>
+<div><button id="start">Start Peers</button> <button id="send">Send Test Message</button></div>
+<pre id="log"></pre>
+<script>
+async function log(msg){ const p = document.getElementById('log'); p.textContent += msg + '\n'; console.log(msg); }
+
+// Simple in-page signaling using BroadcastChannel
+const channel = new BroadcastChannel('afya-demo-sig');
+
+async function createPeer(name){
+  const pc = new RTCPeerConnection();
+  const dc = pc.createDataChannel('afya-crdt');
+  dc.onopen = ()=> log(name + ' channel open');
+  dc.onmessage = (e)=> log(name + ' received: ' + e.data);
+  pc.onicecandidate = e=>{ if(e.candidate) channel.postMessage({ type:'ice', from:name, candidate: e.candidate }); };
+  return { pc, dc, name };
+}
+
+let A, B;
+document.getElementById('start').onclick = async ()=>{
+  A = await createPeer('A');
+  B = await createPeer('B');
+  // B listens for datachannel (when A creates it remote side receives)
+  B.pc.ondatachannel = ev=>{ B.dc = ev.channel; B.dc.onmessage = e=> log('B got: '+e.data); B.dc.onopen = ()=> log('B datachannel open'); };
+  // Exchange offers via BroadcastChannel
+  const offer = await A.pc.createOffer();
+  await A.pc.setLocalDescription(offer);
+  channel.postMessage({ type:'offer', sdp: offer.sdp });
+  // Wait for messages
+  channel.onmessage = async (ev)=>{
+    const m = ev.data;
+    if(m.type==='offer' && m.from!=='A'){
+      // ignore
+    }
+    if(m.type==='offer' && m.from==='A'){
+      await B.pc.setRemoteDescription({ type:'offer', sdp: m.sdp });
+      const answer = await B.pc.createAnswer();
+      await B.pc.setLocalDescription(answer);
+      channel.postMessage({ type:'answer', sdp: answer.sdp });
+    } else if(m.type==='answer' && m.from==='B'){
+      await A.pc.setRemoteDescription({ type:'answer', sdp: m.sdp });
+    } else if(m.type==='ice'){
+      const target = m.to==='A'?A:B;
+      try{ await target.pc.addIceCandidate(m.candidate); }catch(e){}
+    }
+  };
+  // send Offer tagged from A for demo
+  channel.postMessage({ type:'offer', from:'A', sdp: offer.sdp });
+  log('Offer sent from A');
+};
+
+document.getElementById('send').onclick = ()=>{
+  if(A && A.dc && A.dc.readyState==='open'){ A.dc.send('Hello from A at ' + new Date().toISOString()); log('A sent message'); }
+  else log('Channel not open');
+};
+</script>
+</body>
+</html>

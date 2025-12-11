@@ -1,0 +1,6 @@
+FROM node:18-slim
+WORKDIR /app
+COPY signaling-server-secure.js ./
+RUN npm init -y && npm install express socket.io jsonwebtoken
+EXPOSE 5005
+CMD ["node", "signaling-server-secure.js"]

@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  signaling:
+    build:
+      context: ./scripts
+      dockerfile: signaling-server.Dockerfile
+    environment:
+      - SIGNALING_JWT_SECRET=change_this_secret
+      - SIGNALING_PORT=5005
+    ports:
+      - "5005:5005"
