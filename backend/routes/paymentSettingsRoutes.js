@@ -1,21 +1,29 @@
-import express from 'express';
-import { saveSettings, getSettings, revealSecrets, enable2FA, verifyAndEnable2FA, changeAdminPassword } from '../controllers/paymentSettingsController.js';
-import { revealLimiter } from '../middleware/rateLimiterSettings.js';
-import { auth } from '../middleware/auth.js';
+import express from "express";
+import {
+  saveSettings,
+  getSettings,
+  requestReveal2FA,
+  verifyReveal2FA,
+  rotateAdminPassword
+} from "../controllers/paymentSettingsController.js";
+
+import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
-// only admin can save settings; auth ensures req.user exists and role check can be added
-router.post('/save', auth, async (req,res)=>{
-  if(!req.user) return res.status(401).json({ error:'not auth' });
-  if(!['SuperAdmin','HospitalAdmin'].includes(req.user.role)) return res.status(403).json({ error:'forbidden' });
-  return saveSettings(req,res);
-});
+// Save encrypted settings
+router.post("/save", auth, saveSettings);
 
-router.get('/meta', auth, getSettings);
-router.post('/2fa/enable', auth, enable2FA);
-router.post('/2fa/verify', auth, verifyAndEnable2FA);
-router.post('/change-password', auth, changeAdminPassword);
-router.post('/reveal', auth, revealLimiter, revealSecrets);
+// Metadata only (no secrets)
+router.get("/get", auth, getSettings);
+
+// Request OTP before revealing secrets
+router.post("/reveal/request", auth, requestReveal2FA);
+
+// Verify OTP + decrypt secrets
+router.post("/reveal/verify", auth, verifyReveal2FA);
+
+// Rotate admin encryption password
+router.post("/rotate-password", auth, rotateAdminPassword);
 
 export default router;
