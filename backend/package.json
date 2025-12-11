@@ -43,8 +43,9 @@
     "uuid": "^9.0.0",
     "web-push": "^3.5.0",
     "openai": "^4.0.0",
-    "express-rate-limit": "^6.9.0"
-
+    "express-rate-limit": "^6.9.0",
+    "hl7": "^1.0.0"
+    
   },
   "devDependencies": {
     "jest": "^29.6.1",
