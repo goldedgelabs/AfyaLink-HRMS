@@ -36,6 +36,9 @@
     "@medplum/fhirtypes": "^2.1.2",
     "@automerge/automerge": "^2.0.5",
     "stripe": "^14.0.0",
+    "pdfkit": "^0.13.0",
+    "pdfkit": "^0.13.0"
+
     "node-cron": "^3.0.3"
 
   },
