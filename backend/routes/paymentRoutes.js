@@ -1,25 +1,60 @@
-
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import mpesa from '../payments/mpesa.js';
-import stripe from '../payments/stripe.js';
-import flutter from '../payments/flutterwave.js';
 
-router.post('/mpesa/stk', async (req, res) => {
-  const { phone, amount } = req.body;
-  const out = await mpesa.initiateSTK(phone, amount);
-  res.json(out);
-});
+import mpesa from "../payments/mpesa.js";
+import stripe from "../payments/stripe.js";
+import flutter from "../payments/flutterwave.js";
 
-router.post('/stripe/create', async (req, res) => {
-  const { amount } = req.body;
-  const out = await stripe.createPaymentIntent(amount);
-  res.json(out);
-});
+// Helper: unified response handler
+const safe = (fn) => async (req, res) => {
+  try {
+    const result = await fn(req, res);
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    console.error("Payment Error:", err);
+    res.status(500).json({
+      ok: false,
+      error: err.message || "Payment processing failed"
+    });
+  }
+};
 
-router.post('/flutter/init', async (req, res) => {
-  const out = await flutter.initiatePayment(req.body);
-  res.json(out);
-});
+/**
+ * ------------------------------
+ *     M-PESA (Kenya)
+ * ------------------------------
+ */
+router.post(
+  "/mpesa/stk",
+  safe(async (req) => {
+    const { phone, amount } = req.body;
+    return await mpesa.initiateSTK(phone, amount);
+  })
+);
+
+/**
+ * ------------------------------
+ *     STRIPE (Global)
+ * ------------------------------
+ */
+router.post(
+  "/stripe/create-intent",
+  safe(async (req) => {
+    const { amount, currency = "usd" } = req.body;
+    return await stripe.createPaymentIntent(amount, currency);
+  })
+);
+
+/**
+ * ------------------------------
+ *     FLUTTERWAVE (Africa/Global)
+ * ------------------------------
+ */
+router.post(
+  "/flutter/init",
+  safe(async (req) => {
+    return await flutter.initiatePayment(req.body);
+  })
+);
 
 export default router;
