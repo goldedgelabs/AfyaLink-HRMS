@@ -31,6 +31,3 @@ integrationQueue.on('failed', async (job, err) => {
 });
 
 export default { integrationQueue, integrationDLQ };
-
-// Auto-added alias export: integrationDLQ as { integrationDLQ
-export { integrationDLQ as { integrationDLQ };
