@@ -2,7 +2,7 @@
    Each resource is represented as a key in a shared Automerge doc:
    docId: 'afya:patients' -> doc.patients = { <id>: { firstName, lastName, ... } }
 */
-import Automerge from 'automerge';
+import Automerge from "@automerge/automerge";
 import { loadDoc, saveDoc } from '../services/crdtStore.js';
 
 export async function loadPatientsDoc(){
