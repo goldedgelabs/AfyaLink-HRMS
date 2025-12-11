@@ -1,3 +1,5 @@
+import crdtRoutes from "./routes/crdtRoutes.js";
+app.use("/api/crdt", crdtRoutes);
 import dlqScheduler from './services/dlqScheduler.js';
 import attachWebSocketServer from './wsServer.js';
 import http from 'http';
