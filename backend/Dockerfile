@@ -2,14 +2,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy backend-specific package.json files
-COPY backend/package.json backend/package-lock.json* ./
+# Copy only package.json
+COPY package.json ./
 
-# Install ONLY backend dependencies
+# Install dependencies
 RUN npm install --production
 
-# Copy backend source code
-COPY backend/ .
+# Copy rest of backend code
+COPY . .
 
 EXPOSE 5000
 
