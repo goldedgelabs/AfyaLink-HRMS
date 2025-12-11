@@ -1,7 +1,8 @@
 import express from 'express';
 import ChunkUpload from '../models/ChunkUpload.js';
 import crdtStore from '../services/crdtStore.js';
-import Automerge from 'automerge';
+import * as Automerge from "@automerge/automerge";
+
 
 const router = express.Router();
 
