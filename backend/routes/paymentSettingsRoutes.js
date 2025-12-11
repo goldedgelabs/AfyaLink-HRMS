@@ -17,13 +17,13 @@ router.post("/save", auth, saveSettings);
 // Metadata only (no secrets)
 router.get("/get", auth, getSettings);
 
-// Request OTP before revealing secrets
+// Step 1: Request OTP
 router.post("/reveal/request", auth, requestReveal2FA);
 
-// Verify OTP + decrypt secrets
+// Step 2: Verify OTP and reveal secrets
 router.post("/reveal/verify", auth, verifyReveal2FA);
 
-// Rotate admin encryption password
+// Rotate admin password
 router.post("/rotate-password", auth, rotateAdminPassword);
 
 export default router;
