@@ -45,12 +45,7 @@
     "openai": "^4.0.0",
     "express-rate-limit": "^6.9.0",
     "hl7": "^1.0.0",
-    "@automerge/automerge": "^2.0.3",
-    "@sendgrid": "*",
-    "crypto": "*",
-    "mongodb-memory-server": "*",
-    "supertest": "*",
-    "ws": "*"
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "jest": "^29.6.1",
