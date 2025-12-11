@@ -1,21 +1,17 @@
+import jwt from "jsonwebtoken";
 
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-
-export async function auth(req, res, next) {
+const auth = (req, res, next) => {
   try {
-    let token = null;
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) token = authHeader.split(' ')[1];
-    if (!token && req.cookies && req.cookies.accessToken) token = req.cookies.accessToken;
-    if (!token) return res.status(401).json({ message: 'No token provided' });
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    const user = await User.findById(decoded.id).select('-password');
-    if (!user) return res.status(401).json({ message: 'Invalid token' });
-    req.user = user;
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ error: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+
     next();
   } catch (err) {
-    console.error('Auth error', err.message);
-    return res.status(401).json({ message: 'Not authorized' });
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
-}
+};
+
+export default auth;      // ✅ REQUIRED FOR ESM IMPORTS
