@@ -28,6 +28,7 @@ const env = dotenv.config();
 dotenvExpand.expand(env);
 
 const app = express();
+import './utils/logger.js'; // centralized logger (added by cleanup)
 
 // Middleware
 app.use(
@@ -65,4 +66,76 @@ app.get('/', (req, res) => res.send('AfyaLink HRMS Backend is running 🚀'));
 // Error handler
 app.use(errorHandler);
 
+import analyticsRoutes from './routes/analyticsRoutes.js';
+app.use('/api/analytics', analyticsRoutes);
+import pharmacyRoutes from './routes/pharmacyRoutes.js';
+app.use('/api/pharmacy', pharmacyRoutes);
+import inventoryRoutes from './routes/inventoryRoutes.js';
+app.use('/api/inventory', inventoryRoutes);
+import appointments_adminRoutes from './routes/appointments_adminRoutes.js';
+app.use('/api/appointments_admin', appointments_adminRoutes);
+import billingRoutes from './routes/billingRoutes.js';
+app.use('/api/billing', billingRoutes);
+import reportsRoutes from './routes/reportsRoutes.js';
+app.use('/api/reports', reportsRoutes);
+import branchesRoutes from './routes/branchesRoutes.js';
+app.use('/api/branches', branchesRoutes);
+import ai_adminRoutes from './routes/ai_adminRoutes.js';
+app.use('/api/ai_admin', ai_adminRoutes);
+
+
+import paymentsRoutes from './routes/paymentsRoutes.js';
+import aiRouter from './ai/aiRouter.js';
+
+import './workers/notificationWorker.js';
+
+
+import transactionsRoutes from './routes/transactionsRoutes.js';
+app.use('/api/transactions', transactionsRoutes);
+import stripeRoutes from './routes/stripeRoutes.js';
+app.use('/api/payments/stripe', stripeRoutes);
+import flutterwaveRoutes from './routes/flutterwaveRoutes.js';
+app.use('/api/payments/flutterwave', flutterwaveRoutes);
+import bedsRoutes from './routes/bedsRoutes.js';
+app.use('/api/beds', bedsRoutes);
+import triageRoutes from './routes/triageRoutes.js';
+app.use('/api/triage', triageRoutes);
+
+import connectorsRoutes from './routes/connectorsRoutes.js';
+app.use('/api/connectors', connectorsRoutes);
+
 export default app;
+import paymentSettingsRoutes from './routes/paymentSettingsRoutes.js';
+app.use('/api/payment-settings', paymentSettingsRoutes);
+
+import webhookReceiverRoutes from './routes/webhookReceiverRoutes.js';
+app.use('/api/webhooks', webhookReceiverRoutes);
+
+import integrationWebhookRoutes from './routes/integrationWebhookRoutes.js';
+app.use('/api/integrations/webhook', integrationWebhookRoutes);
+
+import mappingRoutes from './routes/mappingRoutes.js';
+app.use('/api/mappings', mappingRoutes);
+
+import offlineRoutes from './routes/offlineRoutes.js';
+app.use('/api/offline', offlineRoutes);
+import dlqRoutes from './routes/dlqRoutes.js';
+app.use('/api/integrations/dlq', dlqRoutes);
+
+import dlqInspectRoutes from './routes/dlqInspectRoutes.js';
+app.use('/api/integrations/dlq-inspect', dlqInspectRoutes);
+
+import dlqAdminRoutes from './routes/dlqAdminRoutes.js';
+app.use('/api/integrations/dlq-admin', dlqAdminRoutes);
+
+import crdtRoutes from './routes/crdtRoutes.js';
+app.use('/api/crdt', crdtRoutes);
+
+import crdtApiRoutes from './routes/crdtApiRoutes.js';
+app.use('/api/crdt-api', crdtApiRoutes);
+
+import crdtChunkRoutes from './routes/crdtChunkRoutes.js';
+app.use('/api/crdt', crdtChunkRoutes);
+
+import signalingTokenRoutes from './routes/signalingTokenRoutes.js';
+app.use('/api/signaling', signalingTokenRoutes);

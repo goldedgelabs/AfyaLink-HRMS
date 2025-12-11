@@ -8,7 +8,8 @@
     "dev": "nodemon --watch . --exec \"node server.js\"",
     "test": "jest --runInBand",
     "lint": "eslint . --ext .js,.jsx || true",
-    "format": "prettier --write \"**/*.{js,jsx,json,md,css}\" || true"
+    "format": "prettier --write \"**/*.{js,jsx,json,md,css}\" || true",
+    "start:prod": "NODE_ENV=production node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -28,7 +29,13 @@
     "bullmq": "^5.12.0",
     "ioredis": "^5.3.2",
     "web-push": "^3.5.0",
-    "handlebars": "^4.7.7"
+    "handlebars": "^4.7.7",
+    "automerge": "^1.0.1",
+    "bull": "^4.10.0",
+    "axios": "^1.5.0",
+    "node-fetch": "^2.6.7",
+    "@medplum/hl7": "^0.1.0",
+    "@medplum/fhirtypes": "^0.1.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.22",

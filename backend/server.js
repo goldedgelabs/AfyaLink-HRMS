@@ -1,3 +1,5 @@
+import dlqScheduler from './services/dlqScheduler.js';
+import attachWebSocketServer from './wsServer.js';
 import http from 'http';
 import { Server as IOServer } from 'socket.io';
 import dotenv from 'dotenv';
