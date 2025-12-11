@@ -1,4 +1,4 @@
-import { Automerge } from "automerge";
+import * as Automerge from "@automerge/automerge";
 import fs from 'fs';
 import mongoose from 'mongoose';
 
