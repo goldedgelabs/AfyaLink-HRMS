@@ -1,0 +1,37 @@
+/* ================================
+   THEME VARIABLES
+================================ */
+:root {
+  --accent: #4f46e5;
+
+  /* Dark mode colors */
+  --dark-bg: #0f172a;
+  --dark-card: rgba(255, 255, 255, 0.04);
+  --dark-text: #ffffff;
+  --dark-hover: rgba(255, 255, 255, 0.08);
+
+  /* Light mode colors */
+  --light-bg: #ffffff;
+  --light-card: rgba(0, 0, 0, 0.03);
+  --light-text: #0b1220;
+  --light-hover: rgba(15, 23, 42, 0.06);
+
+  --radius: 12px;
+  --transition: 0.25s ease;
+}
+
+/* DARK THEME (default) */
+body.dark {
+  --sidebar-bg: var(--dark-bg);
+  --sidebar-text: var(--dark-text);
+  --sidebar-card: var(--dark-card);
+  --sidebar-hover: var(--dark-hover);
+}
+
+/* LIGHT THEME */
+body.light {
+  --sidebar-bg: var(--light-bg);
+  --sidebar-text: var(--light-text);
+  --sidebar-card: var(--light-card);
+  --sidebar-hover: var(--light-hover);
+}
