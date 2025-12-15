@@ -1,1 +1,0 @@
-export default () => <h2>Pharmacy</h2>;
