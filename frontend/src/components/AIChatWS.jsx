@@ -1,50 +1,97 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from "react";
+import { useSocket } from "../utils/socket";
+import { useAuth } from "../utils/auth";
 
-export default function AIChatWS({ token }) {
+export default function AIChatWS() {
+  const socket = useSocket();
+  const { user } = useAuth();
+
   const [messages, setMessages] = useState([]);
-  const wsRef = useRef(null);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
 
   useEffect(() => {
-    const url = (process.env.REACT_APP_WS_BASE || '') + '/ws/ai?token=' + encodeURIComponent(token || '');
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-    ws.onopen = () => setMessages(m => [...m, { from: 'sys', text: 'connected' }]);
-    ws.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.event === 'chunk') {
-          setMessages(m => [...m, { from: 'ai', text: data.data }]);
-        } else if (data.event === 'done') {
-          setMessages(m=>[...m,{from:'ai',text: JSON.stringify(data.data)}]);
-        } else if (data.event === 'status') {
-          setMessages(m => [...m, { from: 'sys', text: data.data }]);
-        } else {
-          setMessages(m => [...m, { from: 'raw', text: e.data }]);
-        }
-      } catch (err) {
-        setMessages(m=>[...m,{from:'raw',text:e.data}]);
-      }
+    if (!socket || !user) return;
+
+    // Join AI room (optional but recommended)
+    socket.emit("ai:join");
+
+    socket.on("ai:status", (msg) => {
+      setMessages((m) => [...m, { from: "sys", text: msg }]);
+    });
+
+    socket.on("ai:chunk", (chunk) => {
+      setMessages((m) => [...m, { from: "ai", text: chunk }]);
+    });
+
+    socket.on("ai:done", (data) => {
+      setMessages((m) => [
+        ...m,
+        { from: "ai", text: JSON.stringify(data) },
+      ]);
+    });
+
+    socket.on("disconnect", () => {
+      setMessages((m) => [...m, { from: "sys", text: "Disconnected" }]);
+    });
+
+    return () => {
+      socket.off("ai:status");
+      socket.off("ai:chunk");
+      socket.off("ai:done");
     };
-    ws.onclose = () => setMessages(m=>[...m,{from:'sys',text:'disconnected'}]);
-    return () => ws.close();
-  }, [token]);
+  }, [socket, user]);
 
   const send = () => {
-    if (!input.trim()) return;
-    const msg = { type: 'diagnose', symptoms: input };
-    wsRef.current.send(JSON.stringify(msg));
-    setMessages(m => [...m, { from: 'user', text: input }]);
-    setInput('');
+    if (!input.trim() || !socket) return;
+
+    socket.emit("ai:message", {
+      type: "diagnose",
+      symptoms: input,
+    });
+
+    setMessages((m) => [...m, { from: "user", text: input }]);
+    setInput("");
   };
 
-  return (<div>
-    <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid #eee', padding: 8 }}>
-      {messages.map((m,i)=><div key={i} style={{ margin:6, background: m.from==='ai'? '#eef':'#dfd', padding:8, borderRadius:6 }}>{m.text}</div>)}
+  return (
+    <div>
+      <div
+        style={{
+          maxHeight: 320,
+          overflowY: "auto",
+          border: "1px solid #eee",
+          padding: 8,
+        }}
+      >
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            style={{
+              margin: 6,
+              background:
+                m.from === "ai"
+                  ? "#eef"
+                  : m.from === "user"
+                  ? "#dfd"
+                  : "#eee",
+              padding: 8,
+              borderRadius: 6,
+            }}
+          >
+            <b>{m.from}:</b> {m.text}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          style={{ flex: 1 }}
+          placeholder="Describe symptoms..."
+        />
+        <button onClick={send}>Ask AI</button>
+      </div>
     </div>
-    <div style={{marginTop:8, display:'flex', gap:8}}>
-      <input value={input} onChange={e=>setInput(e.target.value)} style={{flex:1}} />
-      <button onClick={send}>Ask AI</button>
-    </div>
-  </div>);
+  );
 }
