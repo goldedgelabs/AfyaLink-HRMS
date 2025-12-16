@@ -15,6 +15,25 @@ export default function Login() {
     import.meta.env.VITE_API_URL ||
     "https://afyalink-hrms-4.onrender.com/api";
 
+  // 🔁 role → dashboard mapping
+  const roleRedirect = (role) => {
+    switch (role) {
+      case "SuperAdmin":
+        return "/superadmin";
+      case "HospitalAdmin":
+        return "/hospitaladmin";
+      case "Doctor":
+        return "/doctor";
+      case "Nurse":
+        return "/ai/medical";
+      case "LabTech":
+        return "/labtech/labs";
+      case "Patient":
+      default:
+        return "/patient";
+    }
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
@@ -23,18 +42,24 @@ export default function Login() {
       const res = await axios.post(
         `${API_BASE}/auth/login`,
         { email, password },
-        { headers: { "Content-Type": "application/json" } }
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true, // 🔐 for refresh token cookie
+        }
       );
 
-      if (res.data?.token && res.data?.user) {
-        // Save auth in context + localStorage
-        login(res.data.user, res.data.token);
+      const { user, accessToken } = res.data;
 
-        // Redirect based on role (optional logic)
-        navigate("/");
-      } else {
+      if (!user || !accessToken) {
         setErr("Login failed: invalid response");
+        return;
       }
+
+      // ✅ save user + token
+      login(user, accessToken);
+
+      // ✅ redirect by role
+      navigate(roleRedirect(user.role), { replace: true });
     } catch (error) {
       console.error("Login error:", error.response || error);
       setErr(error.response?.data?.msg || "Login failed");
@@ -80,79 +105,6 @@ export default function Login() {
           mary@afya.test (patientpass)
         </p>
       </div>
-
-      <style>{`
-        .login-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 100vh;
-          background: linear-gradient(135deg, #4f46e5, #06b6d4);
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .login-card {
-          background: rgba(255,255,255,0.9);
-          backdrop-filter: blur(12px);
-          padding: 32px 24px;
-          border-radius: 16px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-          width: 100%;
-          max-width: 420px;
-        }
-
-        .login-card h2 {
-          text-align: center;
-          font-size: 28px;
-          margin-bottom: 24px;
-          font-weight: 700;
-          background: linear-gradient(90deg, #4f46e5, #06b6d4);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        label {
-          display: block;
-          margin-top: 12px;
-          margin-bottom: 6px;
-          font-weight: 600;
-        }
-
-        input {
-          width: 100%;
-          padding: 10px 12px;
-          border-radius: 8px;
-          border: 1px solid #ccc;
-          margin-bottom: 12px;
-          font-size: 14px;
-        }
-
-        .login-btn {
-          width: 100%;
-          padding: 12px;
-          border-radius: 8px;
-          border: none;
-          background: linear-gradient(135deg, #3b82f6, #1e40af);
-          color: white;
-          font-weight: 700;
-          font-size: 16px;
-          cursor: pointer;
-        }
-
-        .error-msg {
-          color: #ef4444;
-          margin-bottom: 12px;
-          font-weight: 600;
-          text-align: center;
-        }
-
-        .demo-users {
-          margin-top: 16px;
-          font-size: 12px;
-          color: #555;
-          text-align: center;
-        }
-      `}</style>
     </div>
   );
 }
