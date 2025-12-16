@@ -1,4 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+/* ======================================================
+   ROLE → DEFAULT ROUTE MAP
+====================================================== */
+const ROLE_HOME = {
+  SuperAdmin: "/superadmin",
+  HospitalAdmin: "/hospitaladmin",
+  Doctor: "/doctor",
+  Nurse: "/ai/medical",
+  LabTech: "/lab",
+  Pharmacist: "/pharmacy",
+  Patient: "/patient",
+};
 
 /* ======================================================
    AUTH CONTEXT
@@ -7,34 +21,52 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  /* --------------------------------------------------
+     Restore auth on refresh
+  -------------------------------------------------- */
   useEffect(() => {
-    // Restore auth from localStorage if present
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    const token = localStorage.getItem("token");
+
+    if (storedUser && token) {
       try {
         setUser(JSON.parse(storedUser));
       } catch {
-        localStorage.removeItem("user");
+        localStorage.clear();
       }
     }
     setLoading(false);
   }, []);
 
+  /* --------------------------------------------------
+     LOGIN (with auto-redirect by role)
+  -------------------------------------------------- */
   const login = (userData, token) => {
+    if (!userData || !userData.role) {
+      console.error("Invalid user data on login");
+      return;
+    }
+
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
-    if (token) {
-      localStorage.setItem("token", token);
-    }
+    localStorage.setItem("token", token);
+
+    const target = ROLE_HOME[userData.role] || "/";
+    navigate(target, { replace: true });
   };
 
+  /* --------------------------------------------------
+     LOGOUT
+  -------------------------------------------------- */
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+    localStorage.clear();
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -43,15 +75,19 @@ export function AuthProvider({ children }) {
         user,
         loading,
         isAuthenticated: !!user,
+        role: user?.role,
         login,
         logout,
       }}
     >
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }
 
+/* ======================================================
+   HOOK
+====================================================== */
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {
@@ -61,31 +97,30 @@ export function useAuth() {
 }
 
 /* ======================================================
-   API FETCH HELPER (kept from your original file)
+   API FETCH HELPER (JWT-aware)
 ====================================================== */
-
 export async function apiFetch(path, options = {}) {
   const base = import.meta.env.VITE_API_URL || "";
-  const headers = options.headers || {};
-  let res;
+  const token = localStorage.getItem("token");
 
-  // Try cookie-based auth first
-  res = await fetch(base + path, {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(base + path, {
     ...options,
     headers,
     credentials: "include",
   });
 
-  if (res.status !== 401) return res;
-
-  // Fallback to Bearer token
-  const token = localStorage.getItem("token");
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-    res = await fetch(base + path, {
-      ...options,
-      headers,
-    });
+  if (res.status === 401) {
+    localStorage.clear();
+    window.location.href = "/login";
   }
 
   return res;
