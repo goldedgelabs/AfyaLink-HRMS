@@ -1,32 +1,43 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../utils/auth";
 
-export default function Login({ onLogin, toggleRegister }) {
-  const [email, setEmail] = useState('admin@afya.test');
-  const [password, setPassword] = useState('adminpass');
-  const [err, setErr] = useState('');
+export default function Login() {
+  const [email, setEmail] = useState("admin@afya.test");
+  const [password, setPassword] = useState("adminpass");
+  const [err, setErr] = useState("");
 
-  const backendURL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
-  const apiBase = `${backendURL}/api`;
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const API_BASE =
+    import.meta.env.VITE_API_URL ||
+    "https://afyalink-hrms-4.onrender.com/api";
 
   const submit = async (e) => {
     e.preventDefault();
-    setErr('');
+    setErr("");
 
     try {
-      const res = await axios.post(`${apiBase}/auth/login`, { email, password }, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await axios.post(
+        `${API_BASE}/auth/login`,
+        { email, password },
+        { headers: { "Content-Type": "application/json" } }
+      );
 
-      if (res.data?.token) {
-        localStorage.setItem('token', res.data.token);
-        onLogin(res.data.token);
+      if (res.data?.token && res.data?.user) {
+        // Save auth in context + localStorage
+        login(res.data.user, res.data.token);
+
+        // Redirect based on role (optional logic)
+        navigate("/");
       } else {
-        setErr('Login failed: No token received');
+        setErr("Login failed: invalid response");
       }
     } catch (error) {
-      console.error('Login error:', error.response || error);
-      setErr(error.response?.data?.msg || 'Login failed');
+      console.error("Login error:", error.response || error);
+      setErr(error.response?.data?.msg || "Login failed");
     }
   };
 
@@ -42,7 +53,7 @@ export default function Login({ onLogin, toggleRegister }) {
           <input
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
             required
           />
@@ -51,20 +62,15 @@ export default function Login({ onLogin, toggleRegister }) {
           <input
             type="password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
             required
           />
 
-          <button type="submit" className="login-btn">Login</button>
-        </form>
-
-        <p className="register-link">
-          Don't have an account?{' '}
-          <button type="button" onClick={toggleRegister}>
-            Register
+          <button type="submit" className="login-btn">
+            Login
           </button>
-        </p>
+        </form>
 
         <p className="demo-users">
           Demo users:<br />
@@ -131,27 +137,6 @@ export default function Login({ onLogin, toggleRegister }) {
           font-weight: 700;
           font-size: 16px;
           cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .login-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 12px rgba(0,0,0,0.2);
-        }
-
-        .register-link {
-          margin-top: 16px;
-          font-size: 14px;
-          text-align: center;
-        }
-
-        .register-link button {
-          color: #4f46e5;
-          background: none;
-          border: none;
-          cursor: pointer;
-          text-decoration: underline;
-          font-weight: 600;
         }
 
         .error-msg {
@@ -165,10 +150,9 @@ export default function Login({ onLogin, toggleRegister }) {
           margin-top: 16px;
           font-size: 12px;
           color: #555;
-          line-height: 1.4;
           text-align: center;
         }
       `}</style>
     </div>
   );
-              }
+}
