@@ -1,10 +1,11 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../utils/auth';
+import React from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../utils/auth";
 
-export default function Sidebar(){
-  const { user } = useAuth();
-  const role = user?.role;
+export default function Sidebar() {
+  const { role } = useAuth();
+
+  if (!role) return null;
 
   return (
     <aside className="sidebar">
@@ -12,112 +13,116 @@ export default function Sidebar(){
         <ul>
           <li><Link to="/">Home</Link></li>
 
-          {/* SuperAdmin */}
-          {role === 'SuperAdmin' && <>
-            <li><Link to="/superadmin">SuperAdmin</Link></li>
-            <li><Link to="/superadmin/rbac">RBAC</Link></li>
-            <li><Link to="/superadmin/ml">ML</Link></li>
-          </>}
+          {/* ================= SUPER ADMIN ================= */}
+          {role === "SuperAdmin" && (
+            <>
+              <Section title="Super Admin">
+                <Item to="/superadmin">Dashboard</Item>
+                <Item to="/superadmin/rbac">RBAC</Item>
+                <Item to="/superadmin/ml">ML</Item>
+                <Item to="/analytics">Analytics</Item>
+                <Item to="/reports">Reports</Item>
+              </Section>
+            </>
+          )}
 
-          {/* HospitalAdmin */}
-          {['SuperAdmin','HospitalAdmin'].includes(role) && <>
-            <li><Link to="/hospitaladmin">HospitalAdmin</Link></li>
-            <li><Link to="/hospitaladmin/patients">Patients</Link></li>
-            <li><Link to="/hospitaladmin/financials">Financials</Link></li>
-          </>}
+          {/* ================= HOSPITAL ADMIN ================= */}
+          {["SuperAdmin", "HospitalAdmin"].includes(role) && (
+            <>
+              <Section title="Hospital Admin">
+                <Item to="/hospitaladmin">Dashboard</Item>
+                <Item to="/hospitaladmin/patients">Patients</Item>
+                <Item to="/hospitaladmin/financials">Financials</Item>
+                <Item to="/hospitaladmin/branches">Branches</Item>
+                <Item to="/inventory">Inventory</Item>
+                <Item to="/pharmacy">Pharmacy</Item>
+              </Section>
 
-          {/* Doctor */}
-          {['Doctor'].includes(role) && <>
-            <li><Link to="/doctor">Doctor</Link></li>
-            <li><Link to="/doctor/appointments">Appointments</Link></li>
-          </>}
+              <Section title="Integrations">
+                <Item to="/admin/realtime">Webhooks</Item>
+                <Item to="/admin/crdt-patients">CRDT Editor</Item>
+                <Item to="/admin/notifications">Notifications</Item>
+              </Section>
+            </>
+          )}
 
-          {/* LabTech */}
-          {['LabTech'].includes(role) && <>
-            <li><Link to="/labtech/labs">Lab Tests</Link></li>
-          </>}
+          {/* ================= DOCTOR ================= */}
+          {role === "Doctor" && (
+            <Section title="Doctor">
+              <Item to="/doctor">Dashboard</Item>
+              <Item to="/doctor/appointments">Appointments</Item>
+              <Item to="/ai/medical">AI Assistant</Item>
+              <Item to="/ai/triage">Triage</Item>
+              <Item to="/ai/voice">Voice Dictation</Item>
+            </Section>
+          )}
 
-          {/* Patient */}
-          {['Patient'].includes(role) && <>
-            <li><Link to="/patient">Patient</Link></li>
-            <li><Link to="/patient/appointments">My Appointments</Link></li>
-          </>}
-        </ul>
+          {/* ================= NURSE ================= */}
+          {role === "Nurse" && (
+            <Section title="Nurse">
+              <Item to="/ai/medical">AI Assistant</Item>
+              <Item to="/ai/triage">Triage</Item>
+            </Section>
+          )}
 
-      <div className='section-title'>Integrations</div>
-      <nav>
-        <ul>
-          <li><a href='/admin/integrations/realtime'>Real-time</a></li>
-          <li><a href='/admin/integrations/dlq-editor'>DLQ Editor</a></li>
-          <li><a href='/admin/integrations/dlq'>DLQ Inspector</a></li>
-          <li><a href='/admin/integrations/retry-policy'>Retry Policy</a></li>
-          <li><a href='/admin/integrations/mappings'>Mapping Editor</a></li>
-          <li><a href='/admin/integrations/offline'>Offline Sync</a></li>
-        </ul>
-      </nav>
+          {/* ================= LAB TECH ================= */}
+          {role === "LabTech" && (
+            <Section title="Laboratory">
+              <Item to="/labtech/labs">Lab Tests</Item>
+              <Item to="/lab">Lab Dashboard</Item>
+            </Section>
+          )}
 
-      <div className='section-title'>Realtime</div>
-      <nav>
-        <ul>
-          <li><a href='/admin/realtime'>Webhooks</a></li>
-        </ul>
+          {/* ================= PATIENT ================= */}
+          {role === "Patient" && (
+            <>
+              <Section title="Patient">
+                <Item to="/patient">Dashboard</Item>
+                <Item to="/payments">Payments</Item>
+                <Item to="/ai/chatbot">Health Chatbot</Item>
+              </Section>
+            </>
+          )}
 
-      <div className='section-title'>Integrations</div>
-      <nav>
-        <ul>
-          <li><a href='/admin/integrations/realtime'>Real-time</a></li>
-          <li><a href='/admin/integrations/dlq-editor'>DLQ Editor</a></li>
-          <li><a href='/admin/integrations/dlq'>DLQ Inspector</a></li>
-          <li><a href='/admin/integrations/retry-policy'>Retry Policy</a></li>
-          <li><a href='/admin/integrations/mappings'>Mapping Editor</a></li>
-          <li><a href='/admin/integrations/offline'>Offline Sync</a></li>
-        </ul>
-      </nav>
+          {/* ================= PAYMENTS ================= */}
+          {["Patient", "HospitalAdmin", "SuperAdmin"].includes(role) && (
+            <Section title="Finance">
+              <Item to="/payments">Payments</Item>
+              <Item to="/payments/full">Advanced Payments</Item>
+            </Section>
+          )}
 
-      </nav>
-      <div className='section-title'>Finance</div>
-      <nav>
-        <ul>
-          <li><a href='/admin/transactions'>Transactions</a></li>
-          <li><a href='/patient/payments'>Make Payment</a></li>
-          <li><a href='/admin/beds'>Bed Management</a></li>
-          <li><a href='/ai/triage'>Triage</a></li>
-        </ul>
-
-      <div className='section-title'>Integrations</div>
-      <nav>
-        <ul>
-          <li><a href='/admin/integrations/realtime'>Real-time</a></li>
-          <li><a href='/admin/integrations/dlq-editor'>DLQ Editor</a></li>
-          <li><a href='/admin/integrations/dlq'>DLQ Inspector</a></li>
-          <li><a href='/admin/integrations/retry-policy'>Retry Policy</a></li>
-          <li><a href='/admin/integrations/mappings'>Mapping Editor</a></li>
-          <li><a href='/admin/integrations/offline'>Offline Sync</a></li>
-        </ul>
-      </nav>
-
-      <div className='section-title'>Realtime</div>
-      <nav>
-        <ul>
-          <li><a href='/admin/realtime'>Webhooks</a></li>
-        </ul>
-
-      <div className='section-title'>Integrations</div>
-      <nav>
-        <ul>
-          <li><a href='/admin/integrations/realtime'>Real-time</a></li>
-          <li><a href='/admin/integrations/dlq-editor'>DLQ Editor</a></li>
-          <li><a href='/admin/integrations/dlq'>DLQ Inspector</a></li>
-          <li><a href='/admin/integrations/retry-policy'>Retry Policy</a></li>
-          <li><a href='/admin/integrations/mappings'>Mapping Editor</a></li>
-          <li><a href='/admin/integrations/offline'>Offline Sync</a></li>
+          {/* ================= REALTIME ================= */}
+          {["Doctor", "Nurse", "Patient"].includes(role) && (
+            <Section title="Realtime">
+              <Item to="/ai/ws">Live AI Chat</Item>
+            </Section>
+          )}
         </ul>
       </nav>
 
-      </nav>
-      </nav>
-      </nav>
       <div className="sidebar-footer">AfyaLink • Secure</div>
     </aside>
+  );
+}
+
+/* ======================================================
+   SMALL HELPERS (CLEAN JSX)
+====================================================== */
+
+function Section({ title, children }) {
+  return (
+    <>
+      <li className="section-title">{title}</li>
+      {children}
+    </>
+  );
+}
+
+function Item({ to, children }) {
+  return (
+    <li>
+      <Link to={to}>{children}</Link>
+    </li>
   );
 }
