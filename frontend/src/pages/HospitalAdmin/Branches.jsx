@@ -1,5 +1,5 @@
-import API_BASE from "@/config/api";
 import React, { useEffect, useState } from "react";
+import API_BASE from "@/config/api";
 
 export default function Branches() {
   const [branches, setBranches] = useState([]);
@@ -9,19 +9,20 @@ export default function Branches() {
 
   async function fetchBranches() {
     try {
-      const res = await fetch(${API_BASE}//branches");
+      const res = await fetch(`${API_BASE}/branches`);
       const data = await res.json();
       setBranches(data.data || []);
     } catch (err) {
       console.error("Failed to load branches", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function createBranch(e) {
     e.preventDefault();
     try {
-      await fetch(${API_BASE}//branches", {
+      await fetch(`${API_BASE}/branches`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, location }),
