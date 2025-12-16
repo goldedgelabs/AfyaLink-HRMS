@@ -1,9 +1,11 @@
-function permit(...allowed) {
+/* ======================================================
+   ROLE-BASED ACCESS CONTROL
+====================================================== */
+export const allowRoles = (...roles) => {
   return (req, res, next) => {
-    const { user } = req;
-    if (!user) return res.status(401).json({ message: 'Not authenticated' });
-    if (allowed.includes(user.role)) return next();
-    return res.status(403).json({ message: 'Forbidden' });
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    next();
   };
-}
-export default { permit };
+};
