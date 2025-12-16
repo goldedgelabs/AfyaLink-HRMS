@@ -1,18 +1,29 @@
 import jwt from "jsonwebtoken";
 
-const auth = (req, res, next) => {
+/* ======================================================
+   AUTHENTICATION (JWT)
+====================================================== */
+export default function auth(req, res, next) {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "No token provided" });
+    const header = req.headers.authorization;
 
+    if (!header || !header.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Missing authorization token" });
+    }
+
+    const token = header.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+
+    // Attach user to request
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+    };
 
     next();
   } catch (err) {
-    return res.status(401).json({ error: "Invalid or expired token" });
+    console.error("Auth error:", err.message);
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
-};
-
-export default auth;   // default export
-export { auth };       // named export (for routes using { auth })
+}
