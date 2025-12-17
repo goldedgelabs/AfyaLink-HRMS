@@ -34,6 +34,59 @@ router.post("/register", async (req, res) => {
     });
 
     await user.save();
+/* ======================================================
+   RESEND VERIFICATION EMAIL
+====================================================== */
+router.post("/resend-verification", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ msg: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ msg: "User not found" });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({
+        msg: "Email already verified",
+      });
+    }
+
+    // 🔐 Generate NEW token
+    const token = crypto.randomBytes(32).toString("hex");
+
+    // ⏱ Store token (15 min or 24h – your choice)
+    await redis.set(
+      `verify:${token}`,
+      user._id.toString(),
+      { ex: 60 * 60 * 24 }
+    );
+
+    const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+
+    await sendEmail({
+      to: email,
+      subject: "Verify your AfyaLink account",
+      html: `
+        <h2>Verify your email</h2>
+        <p>Please click the link below to verify your account:</p>
+        <a href="${verifyLink}">${verifyLink}</a>
+        <p>This link expires in 24 hours.</p>
+      `,
+    });
+
+    res.json({
+      msg: "Verification email resent successfully",
+    });
+  } catch (err) {
+    console.error("Resend verification error:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
 
     // 🔐 CREATE VERIFICATION TOKEN
     const token = crypto.randomBytes(32).toString("hex");
