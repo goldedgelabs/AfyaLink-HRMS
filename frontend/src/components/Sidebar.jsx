@@ -7,6 +7,28 @@ export default function Sidebar() {
 
   if (!role) return null;
 
+  /* ================= GUEST (DEMO MODE) ================= */
+  if (role === "guest") {
+    return (
+      <aside className="sidebar">
+        <nav>
+          <ul>
+            <li><Link to="/guest">Demo Home</Link></li>
+
+            <Section title="Demo">
+              <Item to="/ai/chatbot">AI Chatbot</Item>
+              <Item to="/ai/medical">AI Assistant</Item>
+            </Section>
+          </ul>
+        </nav>
+
+        <div className="sidebar-footer">AfyaLink • Demo Mode</div>
+      </aside>
+    );
+  }
+
+  /* ================= AUTHENTICATED USERS ================= */
+
   return (
     <aside className="sidebar">
       <nav>
@@ -15,15 +37,13 @@ export default function Sidebar() {
 
           {/* ================= SUPER ADMIN ================= */}
           {role === "SuperAdmin" && (
-            <>
-              <Section title="Super Admin">
-                <Item to="/superadmin">Dashboard</Item>
-                <Item to="/superadmin/rbac">RBAC</Item>
-                <Item to="/superadmin/ml">ML</Item>
-                <Item to="/analytics">Analytics</Item>
-                <Item to="/reports">Reports</Item>
-              </Section>
-            </>
+            <Section title="Super Admin">
+              <Item to="/superadmin">Dashboard</Item>
+              <Item to="/superadmin/rbac">RBAC</Item>
+              <Item to="/superadmin/ml">ML</Item>
+              <Item to="/analytics">Analytics</Item>
+              <Item to="/reports">Reports</Item>
+            </Section>
           )}
 
           {/* ================= HOSPITAL ADMIN ================= */}
@@ -75,13 +95,11 @@ export default function Sidebar() {
 
           {/* ================= PATIENT ================= */}
           {role === "Patient" && (
-            <>
-              <Section title="Patient">
-                <Item to="/patient">Dashboard</Item>
-                <Item to="/payments">Payments</Item>
-                <Item to="/ai/chatbot">Health Chatbot</Item>
-              </Section>
-            </>
+            <Section title="Patient">
+              <Item to="/patient">Dashboard</Item>
+              <Item to="/payments">Payments</Item>
+              <Item to="/ai/chatbot">Health Chatbot</Item>
+            </Section>
           )}
 
           {/* ================= PAYMENTS ================= */}
