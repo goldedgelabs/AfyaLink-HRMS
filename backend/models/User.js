@@ -19,9 +19,9 @@ const userSchema = new Schema(
         "Doctor",
         "Nurse",
         "LabTech",
-        "Patient"
+        "Patient",
       ],
-      required: true
+      required: true,
     },
 
     hospital: { type: Schema.Types.ObjectId, ref: "Hospital" },
@@ -32,7 +32,13 @@ const userSchema = new Schema(
 
     refreshTokens: { type: [String], default: [] },
 
-    active: { type: Boolean, default: true }
+    active: { type: Boolean, default: true },
+
+    // ✅ REQUIRED FOR EMAIL VERIFICATION
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
