@@ -1,3 +1,12 @@
+
+.pw-strength {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.pw-strength.weak { color: #dc2626; }
+.pw-strength.medium { color: #d97706; }
+.pw-strength.strong { color: #16a34a; }
 /* ---------------------------
    Auth Pages
 --------------------------- */
