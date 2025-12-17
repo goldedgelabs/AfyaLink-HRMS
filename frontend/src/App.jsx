@@ -9,6 +9,7 @@ import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Notifications from "./components/Notifications";
 import AIChatWS from "./components/AIChatWS";
+
 // Guest / Demo
 import GuestDashboard from "./pages/Guest/GuestDashboard";
 
@@ -67,7 +68,15 @@ function Protected({ roles }) {
   const { user, loading } = useAuth();
 
   if (loading) return null;
+
+  // 🔐 No session → login
   if (!user) return <Navigate to="/login" replace />;
+
+  // 🚫 Guest blocked from protected app
+  if (user.role === "guest") {
+    return <Navigate to="/guest" replace />;
+  }
+
   if (roles && !roles.includes(user.role)) {
     return <div style={{ padding: 20 }}>⛔ Access denied</div>;
   }
@@ -106,7 +115,10 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Protected App */}
+        {/* ✅ Guest / Demo (NO backend) */}
+        <Route path="/guest" element={<GuestDashboard />} />
+
+        {/* Protected App (real users only) */}
         <Route element={<Protected />}>
           <Route element={<AppLayout />}>
             <Route index element={<div>Welcome to AfyaLink HRMS</div>} />
