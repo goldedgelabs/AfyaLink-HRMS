@@ -5,6 +5,11 @@ import jwt from "jsonwebtoken";
 ====================================================== */
 export default function auth(req, res, next) {
   try {
+    // ✅ Allow refresh token endpoint to pass
+    if (req.path === "/auth/refresh") {
+      return next();
+    }
+
     const header = req.headers.authorization;
 
     if (!header || !header.startsWith("Bearer ")) {
