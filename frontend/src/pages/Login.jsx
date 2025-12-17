@@ -10,7 +10,11 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [resendMsg, setResendMsg] = useState("");
+  const [showResend, setShowResend] = useState(false);
 
   /* ---------------------------------------
      Load remembered email
@@ -29,6 +33,8 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setInfo("");
+    setShowResend(false);
 
     try {
       if (rememberMe) {
@@ -37,21 +43,46 @@ export default function Login() {
         localStorage.removeItem("remember_email");
       }
 
-      // 🔐 CALL BACKEND LOGIN (PRODUCTION PATH)
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/login`,
         { email, password },
         { withCredentials: true }
       );
 
-      // ✅ BACKEND RETURNS { accessToken, user }
       const { user, accessToken } = res.data;
-
-      // 🔑 STORE TOKEN + USER
       login(user, accessToken);
     } catch (err) {
       console.error(err);
-      setError("Invalid email or password");
+
+      const msg =
+        err?.response?.data?.msg || "Invalid email or password";
+
+      setError(msg);
+
+      // 🔔 Email not verified → show resend option
+      if (msg.toLowerCase().includes("verify")) {
+        setShowResend(true);
+      }
+    }
+  };
+
+  /* ---------------------------------------
+     Resend verification email
+  ---------------------------------------- */
+  const resendVerification = async () => {
+    setResendMsg("Sending verification email...");
+
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/auth/resend-verification`,
+        { email }
+      );
+
+      setResendMsg(res.data.msg || "Verification email sent");
+    } catch (err) {
+      setResendMsg(
+        err?.response?.data?.msg || "Failed to send email"
+      );
     }
   };
 
@@ -62,6 +93,7 @@ export default function Login() {
         <p className="subtitle">Sign in to AfyaLink HRMS</p>
 
         {error && <div className="auth-error">{error}</div>}
+        {info && <div className="auth-info">{info}</div>}
 
         <label>Email address</label>
         <input
@@ -97,6 +129,20 @@ export default function Login() {
         <button disabled={loading}>
           {loading ? "Signing in..." : "Sign in"}
         </button>
+
+        {/* 🔁 RESEND VERIFICATION */}
+        {showResend && (
+          <div style={{ marginTop: 16 }}>
+            <button
+              type="button"
+              onClick={resendVerification}
+              className="link-btn"
+            >
+              Resend verification email
+            </button>
+            {resendMsg && <p>{resendMsg}</p>}
+          </div>
+        )}
 
         <div className="auth-footer">
           <span>Don’t have an account?</span>
