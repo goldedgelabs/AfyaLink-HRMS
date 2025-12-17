@@ -16,6 +16,7 @@ import GuestDashboard from "./pages/GuestDashboard";
 // Auth pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Unauthorized from "./pages/Unauthorized";
 
 // Dashboards
 import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
@@ -62,24 +63,24 @@ import CRDTPatientEditor from "./pages/Admin/CRDTPatientEditor";
 import RealTimeIntegrations from "./pages/Admin/RealTimeIntegrations";
 
 /* =====================================================
-   PROTECTED ROUTE
+   PROTECTED ROUTE (ROLE-AWARE)
 ===================================================== */
 function Protected({ roles }) {
   const { user, loading } = useAuth();
 
   if (loading) return null;
 
-  // 🔐 No session
+  // 🔐 Not logged in
   if (!user) return <Navigate to="/login" replace />;
 
-  // 🚫 Guest blocked from real app
+  // 🚫 Guests cannot access app
   if (user.role === "guest") {
     return <Navigate to="/guest" replace />;
   }
 
-  // ⛔ Role check
+  // ⛔ Role restriction
   if (roles && !roles.includes(user.role)) {
-    return <div style={{ padding: 20 }}>⛔ Access denied</div>;
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <Outlet />;
@@ -115,6 +116,7 @@ export default function App() {
         {/* ---------------- PUBLIC ---------------- */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* ---------------- GUEST / DEMO ---------------- */}
         <Route path="/guest" element={<GuestDashboard />} />
