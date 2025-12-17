@@ -5,65 +5,87 @@ import { useAuth } from "../utils/auth";
 
 export default function Register() {
   const { register, loading } = useAuth();
+
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
-    role: "patient"
+    confirmPassword: ""
   });
 
-  const handleChange = (e) =>
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await register(form);
+
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    await register({
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      role: "patient" // 🔒 enforced
+    });
   };
 
   return (
     <div className="auth-bg">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>Create Account</h1>
-        <p className="subtitle">Join AfyaLink HRMS</p>
+        <h1>Create your account</h1>
+        <p className="subtitle">
+          Join AfyaLink HRMS as a patient
+        </p>
+
+        {error && <div className="auth-error">{error}</div>}
 
         <label>Full Name</label>
         <input
           name="name"
           value={form.name}
           onChange={handleChange}
+          placeholder="John Doe"
           required
         />
 
-        <label>Email</label>
+        <label>Email address</label>
         <input
           type="email"
           name="email"
           value={form.email}
           onChange={handleChange}
+          placeholder="you@example.com"
           required
         />
 
-        <label>Role</label>
-        <select
-          name="role"
-          value={form.role}
-          onChange={handleChange}
-        >
-          <option value="patient">Patient</option>
-          <option value="doctor">Doctor</option>
-          <option value="admin">Admin</option>
-        </select>
-
         <PasswordInput
+          label="Password"
           value={form.password}
           onChange={(e) =>
             setForm({ ...form, password: e.target.value })
           }
           showStrength
+          required
+        />
+
+        <PasswordInput
+          label="Confirm password"
+          value={form.confirmPassword}
+          onChange={(e) =>
+            setForm({ ...form, confirmPassword: e.target.value })
+          }
+          required
         />
 
         <button disabled={loading}>
-          {loading ? "Creating..." : "Register"}
+          {loading ? "Creating account..." : "Create account"}
         </button>
 
         <div className="auth-footer">
