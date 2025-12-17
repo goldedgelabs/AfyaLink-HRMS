@@ -1,18 +1,19 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PasswordInput from "../components/PasswordInput";
-import { useAuth } from "../utils/auth";
+import axios from "axios";
 
 export default function Register() {
-  const { register, loading } = useAuth();
+  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
 
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
@@ -28,12 +29,32 @@ export default function Register() {
       return;
     }
 
-    await register({
-      name: form.name,
-      email: form.email,
-      password: form.password,
-      role: "patient" // 🔒 enforced
-    });
+    try {
+      setLoading(true);
+
+      // ✅ CALL BACKEND REGISTER (PRODUCTION PATH)
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/auth/register`,
+        {
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          role: "Patient", // must match backend casing
+        },
+        { withCredentials: true }
+      );
+
+      // ✅ Redirect to login after success
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+      setError(
+        err?.response?.data?.msg ||
+          "Registration failed. Try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -79,13 +100,18 @@ export default function Register() {
           label="Confirm password"
           value={form.confirmPassword}
           onChange={(e) =>
-            setForm({ ...form, confirmPassword: e.target.value })
+            setForm({
+              ...form,
+              confirmPassword: e.target.value,
+            })
           }
           required
         />
 
         <button disabled={loading}>
-          {loading ? "Creating account..." : "Create account"}
+          {loading
+            ? "Creating account..."
+            : "Create account"}
         </button>
 
         <div className="auth-footer">
