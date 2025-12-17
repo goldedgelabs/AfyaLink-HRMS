@@ -1,19 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-/* ======================================================
-   ROLE → DEFAULT ROUTE MAP
-====================================================== */
-const ROLE_HOME = {
-  SuperAdmin: "/superadmin",
-  HospitalAdmin: "/hospitaladmin",
-  Doctor: "/doctor",
-  Nurse: "/ai/medical",
-  LabTech: "/lab",
-  Pharmacist: "/pharmacy",
-  Patient: "/patient",
-  guest: "/guest", // ✅ ADD
-};
 
 /* ======================================================
    AUTH CONTEXT
@@ -22,14 +7,11 @@ const ROLE_HOME = {
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const navigate = useNavigate();
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   /* --------------------------------------------------
      Restore auth on refresh
-     (Guest intentionally NOT restored)
   -------------------------------------------------- */
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -43,38 +25,26 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // 🧠 If no stored auth → no session (guest expires)
     setLoading(false);
   }, []);
 
   /* --------------------------------------------------
-     LOGIN (real users only)
+     LOGIN (expects API response)
   -------------------------------------------------- */
   const login = (userData, token) => {
-    if (!userData || !userData.role) {
-      console.error("Invalid user data on login");
-      return;
-    }
-
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
     localStorage.setItem("token", token);
-
-    const target = ROLE_HOME[userData.role] || "/";
-    navigate(target, { replace: true });
   };
 
   /* --------------------------------------------------
-     GUEST LOGIN (NO backend, NO storage)
+     GUEST LOGIN (no backend)
   -------------------------------------------------- */
   const loginAsGuest = () => {
-    const guestUser = {
+    setUser({
       role: "guest",
       name: "Demo User",
-    };
-
-    setUser(guestUser);
-    navigate("/guest", { replace: true });
+    });
   };
 
   /* --------------------------------------------------
@@ -83,7 +53,6 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setUser(null);
     localStorage.clear();
-    navigate("/login", { replace: true });
   };
 
   return (
@@ -94,7 +63,7 @@ export function AuthProvider({ children }) {
         isAuthenticated: !!user,
         role: user?.role,
         login,
-        loginAsGuest, // ✅ EXPORT
+        loginAsGuest,
         logout,
       }}
     >
@@ -115,13 +84,12 @@ export function useAuth() {
 }
 
 /* ======================================================
-   API FETCH HELPER (BLOCKED FOR GUESTS)
+   API FETCH HELPER
 ====================================================== */
 export async function apiFetch(path, options = {}) {
   const base = import.meta.env.VITE_API_URL || "";
   const token = localStorage.getItem("token");
 
-  // 🚫 Guests never hit backend
   if (!token) {
     throw new Error("Guest users cannot access backend APIs");
   }
