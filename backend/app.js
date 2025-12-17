@@ -28,16 +28,30 @@ const env = dotenv.config();
 dotenvExpand.expand(env);
 
 const app = express();
-import './utils/logger.js'; // centralized logger (added by cleanup)
+import './utils/logger.js'; // centralized logger
 
-// Middleware
+// =======================================================
+// ✅ SAFE CORS FIX — COOKIES + JWT REFRESH WORK
+// =======================================================
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || '*',
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   })
 );
+// =======================================================
 
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
@@ -61,43 +75,55 @@ app.use('/api/ml', mlRoutes);
 app.use('/api/payments/mpesa', mpesaRoutes);
 
 // Root ping
-app.get('/', (req, res) => res.send('AfyaLink HRMS Backend is running 🚀'));
+app.get('/', (req, res) =>
+  res.send('AfyaLink HRMS Backend is running 🚀')
+);
 
 // Error handler
 app.use(errorHandler);
 
+// Extra Routes
 import analyticsRoutes from './routes/analyticsRoutes.js';
 app.use('/api/analytics', analyticsRoutes);
+
 import pharmacyRoutes from './routes/pharmacyRoutes.js';
 app.use('/api/pharmacy', pharmacyRoutes);
+
 import inventoryRoutes from './routes/inventoryRoutes.js';
 app.use('/api/inventory', inventoryRoutes);
+
 import appointments_adminRoutes from './routes/appointments_adminRoutes.js';
 app.use('/api/appointments_admin', appointments_adminRoutes);
+
 import billingRoutes from './routes/billingRoutes.js';
 app.use('/api/billing', billingRoutes);
+
 import reportsRoutes from './routes/reportsRoutes.js';
 app.use('/api/reports', reportsRoutes);
+
 import branchesRoutes from './routes/branchesRoutes.js';
 app.use('/api/branches', branchesRoutes);
+
 import ai_adminRoutes from './routes/ai_adminRoutes.js';
 app.use('/api/ai_admin', ai_adminRoutes);
-
 
 import paymentsRoutes from './routes/paymentsRoutes.js';
 import aiRouter from './ai/aiRouter.js';
 
 import './workers/notificationWorker.js';
 
-
 import transactionsRoutes from './routes/transactionsRoutes.js';
 app.use('/api/transactions', transactionsRoutes);
+
 import stripeRoutes from './routes/stripeRoutes.js';
 app.use('/api/payments/stripe', stripeRoutes);
+
 import flutterwaveRoutes from './routes/flutterwaveRoutes.js';
 app.use('/api/payments/flutterwave', flutterwaveRoutes);
+
 import bedsRoutes from './routes/bedsRoutes.js';
 app.use('/api/beds', bedsRoutes);
+
 import triageRoutes from './routes/triageRoutes.js';
 app.use('/api/triage', triageRoutes);
 
@@ -105,6 +131,7 @@ import connectorsRoutes from './routes/connectorsRoutes.js';
 app.use('/api/connectors', connectorsRoutes);
 
 export default app;
+
 import paymentSettingsRoutes from './routes/paymentSettingsRoutes.js';
 app.use('/api/payment-settings', paymentSettingsRoutes);
 
@@ -119,6 +146,7 @@ app.use('/api/mappings', mappingRoutes);
 
 import offlineRoutes from './routes/offlineRoutes.js';
 app.use('/api/offline', offlineRoutes);
+
 import dlqRoutes from './routes/dlqRoutes.js';
 app.use('/api/integrations/dlq', dlqRoutes);
 
