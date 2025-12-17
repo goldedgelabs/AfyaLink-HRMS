@@ -10,11 +10,11 @@ import {
 const router = express.Router();
 
 /* ======================================================
-   REGISTER
+   REGISTER (🔒 ROLE LOCKED)
 ====================================================== */
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body; // 🔒 role REMOVED
 
     if (!email || !password || !name) {
       return res.status(400).json({ msg: "Missing fields" });
@@ -29,7 +29,7 @@ router.post("/register", async (req, res) => {
       name,
       email,
       password,
-      role: role || "Patient",
+      role: "Patient", // 🔒 HARD LOCK
     });
 
     await user.save();
@@ -37,9 +37,9 @@ router.post("/register", async (req, res) => {
     const safe = user.toObject();
     delete safe.password;
 
-    res.json({ user: safe });
+    res.status(201).json({ user: safe });
   } catch (err) {
-    console.error(err);
+    console.error("Register error:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
@@ -61,7 +61,6 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ msg: "Invalid credentials" });
     }
 
-    // 🔑 TOKENS
     const accessToken = signAccessToken({
       id: user._id,
       role: user.role,
@@ -71,23 +70,20 @@ router.post("/login", async (req, res) => {
       id: user._id,
     });
 
-    // 🔄 store refresh token (rotation-ready)
     user.refreshTokens = user.refreshTokens || [];
     user.refreshTokens.push(refreshToken);
     await user.save();
 
-    // 🍪 REFRESH COOKIE — PRODUCTION SAFE
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,          // REQUIRED for SameSite=None
-      sameSite: "none",      // REQUIRED for Vercel ↔ Render
+      secure: true,          // REQUIRED (HTTPS)
+      sameSite: "none",      // REQUIRED (Vercel ↔ Render)
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
     const safe = user.toObject();
     delete safe.password;
 
-    // ✅ CONSISTENT RESPONSE
     res.json({
       accessToken,
       user: {
@@ -98,13 +94,13 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
+    console.error("Login error:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
 
 /* ======================================================
-   REFRESH TOKEN
+   REFRESH TOKEN (🔁 ENV FIXED)
 ====================================================== */
 router.post("/refresh", async (req, res) => {
   try {
@@ -115,10 +111,7 @@ router.post("/refresh", async (req, res) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(
-        token,
-        process.env.JWT_REFRESH_SECRET
-      );
+      decoded = jwt.verify(token, process.env.REFRESH_SECRET); // ✅ FIXED
     } catch {
       return res.status(401).json({ msg: "Invalid refresh token" });
     }
@@ -128,15 +121,11 @@ router.post("/refresh", async (req, res) => {
       return res.status(401).json({ msg: "Refresh token revoked" });
     }
 
-    // 🔄 ROTATE REFRESH TOKEN
     user.refreshTokens = user.refreshTokens.filter(
       (t) => t !== token
     );
 
-    const newRefresh = signRefreshToken({
-      id: user._id,
-    });
-
+    const newRefresh = signRefreshToken({ id: user._id });
     user.refreshTokens.push(newRefresh);
     await user.save();
 
@@ -154,7 +143,7 @@ router.post("/refresh", async (req, res) => {
 
     res.json({ accessToken: newAccessToken });
   } catch (err) {
-    console.error(err);
+    console.error("Refresh error:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
@@ -187,7 +176,7 @@ router.post("/logout", async (req, res) => {
 
     res.json({ msg: "Logged out" });
   } catch (err) {
-    console.error(err);
+    console.error("Logout error:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
