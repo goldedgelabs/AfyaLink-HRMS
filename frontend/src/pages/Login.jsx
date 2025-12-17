@@ -37,19 +37,20 @@ export default function Login() {
         localStorage.removeItem("remember_email");
       }
 
-      // 🔐 CALL BACKEND LOGIN
+      // 🔐 CALL BACKEND LOGIN (PRODUCTION PATH)
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/login`,
-        { email, password }
+        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        { email, password },
+        { withCredentials: true }
       );
 
-      // EXPECTED RESPONSE SHAPE
-      // { user: {...}, token: "jwt..." }
-      const { user, token } = res.data;
+      // ✅ BACKEND RETURNS { accessToken, user }
+      const { user, accessToken } = res.data;
 
-      // ✅ HAND OVER TO AUTH CONTEXT
-      login(user, token);
+      // 🔑 STORE TOKEN + USER
+      login(user, accessToken);
     } catch (err) {
+      console.error(err);
       setError("Invalid email or password");
     }
   };
