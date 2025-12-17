@@ -1,33 +1,13 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import {
+  signAccessToken,
+  signRefreshToken,
+} from "../utils/jwt.js";
 
 const router = express.Router();
-
-/* ======================================================
-   TOKEN HELPERS
-====================================================== */
-
-function createAccessToken(user) {
-  return jwt.sign(
-    {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-    },
-    process.env.JWT_SECRET || "secret",
-    { expiresIn: process.env.JWT_EXP || "15m" }
-  );
-}
-
-function createRefreshToken(user) {
-  return jwt.sign(
-    { id: user._id },
-    process.env.REFRESH_SECRET || "refresh_secret",
-    { expiresIn: process.env.REFRESH_EXP || "7d" }
-  );
-}
 
 /* ======================================================
    REGISTER
@@ -81,28 +61,35 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ msg: "Invalid credentials" });
     }
 
-    const token = createAccessToken(user);
-    const refreshToken = createRefreshToken(user);
+    // 🔑 TOKENS
+    const accessToken = signAccessToken({
+      id: user._id,
+      role: user.role,
+    });
 
+    const refreshToken = signRefreshToken({
+      id: user._id,
+    });
+
+    // store refresh token (rotation support)
     user.refreshTokens = user.refreshTokens || [];
     user.refreshTokens.push(refreshToken);
     await user.save();
 
-    // HttpOnly refresh cookie
+    // 🍪 Refresh token cookie (COOKIE ONLY)
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/api/auth/refresh",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "None",
+      maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
     const safe = user.toObject();
     delete safe.password;
 
-    // 🔑 FRONTEND EXPECTS THIS SHAPE
+    // ✅ FRONTEND EXPECTS THIS
     res.json({
-      token,
+      token: accessToken,
       user: {
         id: safe._id,
         name: safe.name,
@@ -121,9 +108,7 @@ router.post("/login", async (req, res) => {
 ====================================================== */
 router.post("/refresh", async (req, res) => {
   try {
-    const token =
-      req.cookies?.refreshToken || req.body?.refreshToken;
-
+    const token = req.cookies?.refreshToken;
     if (!token) {
       return res.status(401).json({ msg: "No refresh token" });
     }
@@ -132,7 +117,7 @@ router.post("/refresh", async (req, res) => {
     try {
       decoded = jwt.verify(
         token,
-        process.env.REFRESH_SECRET || "refresh_secret"
+        process.env.REFRESH_SECRET
       );
     } catch {
       return res.status(401).json({ msg: "Invalid refresh token" });
@@ -143,21 +128,29 @@ router.post("/refresh", async (req, res) => {
       return res.status(401).json({ msg: "Refresh token revoked" });
     }
 
-    // rotate refresh token
-    user.refreshTokens = user.refreshTokens.filter(t => t !== token);
-    const newRefresh = createRefreshToken(user);
+    // 🔄 ROTATE REFRESH TOKEN
+    user.refreshTokens = user.refreshTokens.filter(
+      (t) => t !== token
+    );
+
+    const newRefresh = signRefreshToken({
+      id: user._id,
+    });
+
     user.refreshTokens.push(newRefresh);
     await user.save();
 
     res.cookie("refreshToken", newRefresh, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/api/auth/refresh",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "None",
+      maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
-    const newAccessToken = createAccessToken(user);
+    const newAccessToken = signAccessToken({
+      id: user._id,
+      role: user.role,
+    });
 
     res.json({ token: newAccessToken });
   } catch (err) {
@@ -171,25 +164,22 @@ router.post("/refresh", async (req, res) => {
 ====================================================== */
 router.post("/logout", async (req, res) => {
   try {
-    const token =
-      req.cookies?.refreshToken || req.body?.refreshToken;
+    const token = req.cookies?.refreshToken;
 
     if (token) {
       const decoded = jwt.decode(token);
-      if (decoded) {
+      if (decoded?.id) {
         const user = await User.findById(decoded.id);
         if (user) {
           user.refreshTokens = (user.refreshTokens || []).filter(
-            t => t !== token
+            (t) => t !== token
           );
           await user.save();
         }
       }
     }
 
-    res.clearCookie("refreshToken", {
-      path: "/api/auth/refresh",
-    });
+    res.clearCookie("refreshToken");
 
     res.json({ msg: "Logged out" });
   } catch (err) {
