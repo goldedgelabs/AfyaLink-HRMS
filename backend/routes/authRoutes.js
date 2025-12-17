@@ -149,6 +149,55 @@ router.get("/verify-email", async (req, res) => {
     res.status(500).send("Server error");
   }
 });
+/* ======================================================
+   FORGOT PASSWORD
+====================================================== */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ msg: "Email required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Silent success (security)
+      return res.json({
+        msg: "If the email exists, a reset link was sent",
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+
+    // ⏱ 15 minutes
+    await redis.set(
+      `reset:${token}`,
+      user._id.toString(),
+      { ex: 60 * 15 }
+    );
+
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    await sendEmail({
+      to: email,
+      subject: "Reset your AfyaLink password",
+      html: `
+        <h2>Password Reset</h2>
+        <p>Click the link below to reset your password:</p>
+        <a href="${resetLink}">${resetLink}</a>
+        <p>This link expires in 15 minutes.</p>
+      `,
+    });
+
+    res.json({
+      msg: "If the email exists, a reset link was sent",
+    });
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
 
 /* ======================================================
    LOGIN (BLOCK UNVERIFIED USERS)
