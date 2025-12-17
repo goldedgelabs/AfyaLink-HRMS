@@ -9,6 +9,8 @@ import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Notifications from "./components/Notifications";
 import AIChatWS from "./components/AIChatWS";
+// Guest / Demo
+import GuestDashboard from "./pages/Guest/GuestDashboard";
 
 // Auth pages
 import Login from "./pages/Login";
