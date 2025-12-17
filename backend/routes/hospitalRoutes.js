@@ -1,10 +1,31 @@
-import express from 'express';
-import { createHospital, listHospitals } from '../controllers/hospitalController.js';
-import { protect } from '../middleware/authMiddleware.js';
-import { permit } from '../middleware/roleMiddleware.js';
+import express from "express";
+import {
+  createHospital,
+  listHospitals,
+} from "../controllers/hospitalController.js";
+import auth from "../middleware/auth.js";
+import { allowRoles } from "../middleware/roles.js";
+
 const router = express.Router();
 
-router.post('/', protect, permit('SuperAdmin'), createHospital);
-router.get('/', protect, permit('SuperAdmin','HospitalAdmin'), listHospitals);
+/**
+ * Create hospital (SUPER ADMIN ONLY)
+ */
+router.post(
+  "/",
+  auth,
+  allowRoles("SuperAdmin"),
+  createHospital
+);
+
+/**
+ * List hospitals (SUPER ADMIN + HOSPITAL ADMIN)
+ */
+router.get(
+  "/",
+  auth,
+  allowRoles("SuperAdmin", "HospitalAdmin"),
+  listHospitals
+);
 
 export default router;
