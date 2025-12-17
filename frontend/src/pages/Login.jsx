@@ -1,17 +1,40 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../utils/auth";
 
 export default function Login() {
   const { login, loading } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
+  /* ---------------------------------------
+   Load remembered email (if any)
+  ---------------------------------------- */
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("remember_email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
+  /* ---------------------------------------
+   Submit handler
+  ---------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     try {
+      if (rememberMe) {
+        localStorage.setItem("remember_email", email);
+      } else {
+        localStorage.removeItem("remember_email");
+      }
+
       await login(email, password);
     } catch (err) {
       setError("Invalid email or password");
@@ -43,6 +66,22 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+
+        {/* Remember + Forgot */}
+        <div className="auth-row">
+          <label className="remember">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            />
+            Remember me
+          </label>
+
+          <Link to="/forgot-password" className="forgot-link">
+            Forgot password?
+          </Link>
+        </div>
 
         <button disabled={loading}>
           {loading ? "Signing in..." : "Login"}
