@@ -1,7 +1,8 @@
 import express from 'express';
 import { integrationQueue } from '../services/integrationQueue.js';
 import Audit from '../models/Audit.js';
-import { auth } from '../middleware/auth.js';
+import auth from '../middleware/auth.js';
+
 
 const router = express.Router();
 
