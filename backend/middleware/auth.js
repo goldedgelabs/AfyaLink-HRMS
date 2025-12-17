@@ -5,8 +5,8 @@ import jwt from "jsonwebtoken";
 ====================================================== */
 export default function auth(req, res, next) {
   try {
-    // ✅ Allow refresh token endpoint to pass
-    if (req.path === "/auth/refresh") {
+    // ✅ Allow refresh endpoint to bypass access-token auth
+    if (req.originalUrl === "/api/auth/refresh") {
       return next();
     }
 
@@ -17,12 +17,12 @@ export default function auth(req, res, next) {
     }
 
     const token = header.split(" ")[1];
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Attach user to request
+    // ✅ Attach minimal trusted user info
     req.user = {
       id: decoded.id,
-      email: decoded.email,
       role: decoded.role,
     };
 
