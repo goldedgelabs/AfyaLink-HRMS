@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../utils/auth";
 import PasswordInput from "../components/PasswordInput";
+import axios from "axios";
 
 export default function Login() {
   const { login, loading } = useAuth();
@@ -12,7 +13,7 @@ export default function Login() {
   const [error, setError] = useState("");
 
   /* ---------------------------------------
-     Load remembered email (if any)
+     Load remembered email
   ---------------------------------------- */
   useEffect(() => {
     const savedEmail = localStorage.getItem("remember_email");
@@ -36,8 +37,19 @@ export default function Login() {
         localStorage.removeItem("remember_email");
       }
 
-      await login(email, password);
-    } catch {
+      // 🔐 CALL BACKEND LOGIN
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/auth/login`,
+        { email, password }
+      );
+
+      // EXPECTED RESPONSE SHAPE
+      // { user: {...}, token: "jwt..." }
+      const { user, token } = res.data;
+
+      // ✅ HAND OVER TO AUTH CONTEXT
+      login(user, token);
+    } catch (err) {
       setError("Invalid email or password");
     }
   };
@@ -66,7 +78,6 @@ export default function Login() {
           required
         />
 
-        {/* Remember + Forgot */}
         <div className="auth-row">
           <label className="remember">
             <input
