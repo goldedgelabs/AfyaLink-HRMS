@@ -1,11 +1,33 @@
-import express from 'express';
-import { getMe, listUsers, updateUser } from '../controllers/userController.js';
-import { protect } from '../middleware/authMiddleware.js';
-import { permit } from '../middleware/roleMiddleware.js';
+import express from "express";
+import { getMe, listUsers, updateUser } from "../controllers/userController.js";
+import auth from "../middleware/auth.js";
+import { allowRoles } from "../middleware/roles.js";
+
 const router = express.Router();
 
-router.get('/me', protect, getMe);
-router.get('/', protect, permit('SuperAdmin','HospitalAdmin'), listUsers);
-router.patch('/:id', protect, permit('SuperAdmin','HospitalAdmin'), updateUser);
+/**
+ * Get current user (any authenticated user)
+ */
+router.get("/me", auth, getMe);
+
+/**
+ * List all users (ADMIN ONLY)
+ */
+router.get(
+  "/",
+  auth,
+  allowRoles("SuperAdmin", "HospitalAdmin"),
+  listUsers
+);
+
+/**
+ * Update user (ADMIN ONLY)
+ */
+router.patch(
+  "/:id",
+  auth,
+  allowRoles("SuperAdmin", "HospitalAdmin"),
+  updateUser
+);
 
 export default router;
