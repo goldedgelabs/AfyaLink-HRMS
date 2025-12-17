@@ -1,8 +1,8 @@
 import "./theme-d.css";
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 
-import { AuthProvider, useAuth } from "./utils/auth";
+import { useAuth } from "./utils/auth";
 import SocketProvider from "./utils/socket";
 
 import Navbar from "./components/Navbar";
@@ -61,7 +61,7 @@ import RealTimeIntegrations from "./pages/Admin/RealTimeIntegrations";
 /* -------------------------
    Protected Route
 ------------------------- */
-function Protected({ children, roles }) {
+function Protected({ roles }) {
   const { user, loading } = useAuth();
 
   if (loading) return null;
@@ -70,13 +70,13 @@ function Protected({ children, roles }) {
     return <div style={{ padding: 20 }}>⛔ Access denied</div>;
   }
 
-  return children;
+  return <Outlet />;
 }
 
 /* -------------------------
-   Layout Wrapper
+   Layout
 ------------------------- */
-function AppLayout({ children }) {
+function AppLayout() {
   const { user } = useAuth();
 
   return (
@@ -86,7 +86,7 @@ function AppLayout({ children }) {
         {user && <Sidebar />}
         <main className="main">
           {user && <Notifications />}
-          {children}
+          <Outlet />
         </main>
       </div>
     </>
@@ -94,271 +94,73 @@ function AppLayout({ children }) {
 }
 
 /* -------------------------
-   MAIN APP
+   APP
 ------------------------- */
 export default function App() {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+    <SocketProvider>
+      <Routes>
+        {/* Public */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-            {/* App */}
-            <Route
-              path="/*"
-              element={
-                <AppLayout>
-                  <Routes>
-                    <Route path="/" element={<div>Welcome to AfyaLink HRMS</div>} />
+        {/* Protected App */}
+        <Route element={<Protected />}>
+          <Route element={<AppLayout />}>
+            <Route index element={<div>Welcome to AfyaLink HRMS</div>} />
 
-                    {/* Super Admin */}
-                    <Route
-                      path="/superadmin"
-                      element={
-                        <Protected roles={["superadmin"]}>
-                          <SuperAdminDashboard />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/superadmin/rbac"
-                      element={
-                        <Protected roles={["superadmin"]}>
-                          <RBAC />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/superadmin/ml"
-                      element={
-                        <Protected roles={["superadmin"]}>
-                          <ML />
-                        </Protected>
-                      }
-                    />
+            {/* Super Admin */}
+            <Route path="superadmin" element={<SuperAdminDashboard />} />
+            <Route path="superadmin/rbac" element={<RBAC />} />
+            <Route path="superadmin/ml" element={<ML />} />
 
-                    {/* Hospital Admin */}
-                    <Route
-                      path="/hospitaladmin"
-                      element={
-                        <Protected roles={["hospitaladmin"]}>
-                          <HospitalAdminDashboard />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/hospitaladmin/patients"
-                      element={
-                        <Protected roles={["hospitaladmin"]}>
-                          <Patients />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/hospitaladmin/financials"
-                      element={
-                        <Protected roles={["hospitaladmin"]}>
-                          <Financials />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/hospitaladmin/branches"
-                      element={
-                        <Protected roles={["hospitaladmin"]}>
-                          <Branches />
-                        </Protected>
-                      }
-                    />
+            {/* Hospital Admin */}
+            <Route path="hospitaladmin" element={<HospitalAdminDashboard />} />
+            <Route path="hospitaladmin/patients" element={<Patients />} />
+            <Route path="hospitaladmin/financials" element={<Financials />} />
+            <Route path="hospitaladmin/branches" element={<Branches />} />
 
-                    {/* Doctor */}
-                    <Route
-                      path="/doctor"
-                      element={
-                        <Protected roles={["doctor"]}>
-                          <DoctorDashboard />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/doctor/appointments"
-                      element={
-                        <Protected roles={["doctor"]}>
-                          <Appointments />
-                        </Protected>
-                      }
-                    />
+            {/* Doctor */}
+            <Route path="doctor" element={<DoctorDashboard />} />
+            <Route path="doctor/appointments" element={<Appointments />} />
 
-                    {/* Lab */}
-                    <Route
-                      path="/labtech/labs"
-                      element={
-                        <Protected roles={["labtech"]}>
-                          <LabTests />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/lab"
-                      element={
-                        <Protected roles={["labtech", "doctor"]}>
-                          <Lab />
-                        </Protected>
-                      }
-                    />
+            {/* Lab */}
+            <Route path="labtech/labs" element={<LabTests />} />
+            <Route path="lab" element={<Lab />} />
 
-                    {/* Patient */}
-                    <Route
-                      path="/patient"
-                      element={
-                        <Protected roles={["patient"]}>
-                          <PatientDashboard />
-                        </Protected>
-                      }
-                    />
+            {/* Patient */}
+            <Route path="patient" element={<PatientDashboard />} />
 
-                    {/* AI */}
-                    <Route
-                      path="/ai/medical"
-                      element={
-                        <Protected roles={["doctor", "nurse"]}>
-                          <MedicalAssistant />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/ai/chatbot"
-                      element={
-                        <Protected roles={["patient"]}>
-                          <Chatbot />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/ai/triage"
-                      element={
-                        <Protected roles={["doctor", "nurse"]}>
-                          <Triage />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/ai/voice"
-                      element={
-                        <Protected roles={["doctor"]}>
-                          <VoiceDictation />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/ai/ws"
-                      element={
-                        <Protected roles={["doctor", "nurse", "patient"]}>
-                          <AIChatWS />
-                        </Protected>
-                      }
-                    />
+            {/* AI */}
+            <Route path="ai/medical" element={<MedicalAssistant />} />
+            <Route path="ai/chatbot" element={<Chatbot />} />
+            <Route path="ai/triage" element={<Triage />} />
+            <Route path="ai/voice" element={<VoiceDictation />} />
+            <Route path="ai/ws" element={<AIChatWS />} />
 
-                    {/* Admin */}
-                    <Route
-                      path="/admin"
-                      element={
-                        <Protected roles={["superadmin", "hospitaladmin"]}>
-                          <AdminDashboard />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/admin/realtime"
-                      element={
-                        <Protected roles={["superadmin", "hospitaladmin"]}>
-                          <RealTimeIntegrations />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/admin/crdt-patients"
-                      element={
-                        <Protected roles={["superadmin", "hospitaladmin"]}>
-                          <CRDTPatientEditor />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/admin/notifications"
-                      element={
-                        <Protected roles={["superadmin", "hospitaladmin"]}>
-                          <NotificationsPage />
-                        </Protected>
-                      }
-                    />
+            {/* Admin */}
+            <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin/realtime" element={<RealTimeIntegrations />} />
+            <Route path="admin/crdt-patients" element={<CRDTPatientEditor />} />
+            <Route path="admin/notifications" element={<NotificationsPage />} />
 
-                    {/* Analytics / Reports */}
-                    <Route
-                      path="/analytics"
-                      element={
-                        <Protected roles={["superadmin", "hospitaladmin"]}>
-                          <Analytics />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/reports"
-                      element={
-                        <Protected roles={["superadmin", "hospitaladmin"]}>
-                          <Reports />
-                        </Protected>
-                      }
-                    />
+            {/* Analytics */}
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="reports" element={<Reports />} />
 
-                    {/* Pharmacy / Inventory */}
-                    <Route
-                      path="/pharmacy"
-                      element={
-                        <Protected roles={["pharmacist", "hospitaladmin"]}>
-                          <Pharmacy />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/inventory"
-                      element={
-                        <Protected roles={["hospitaladmin"]}>
-                          <Inventory />
-                        </Protected>
-                      }
-                    />
+            {/* Pharmacy */}
+            <Route path="pharmacy" element={<Pharmacy />} />
+            <Route path="inventory" element={<Inventory />} />
 
-                    {/* Payments */}
-                    <Route
-                      path="/payments"
-                      element={
-                        <Protected roles={["hospitaladmin", "superadmin", "patient"]}>
-                          <PaymentsPage />
-                        </Protected>
-                      }
-                    />
-                    <Route
-                      path="/payments/full"
-                      element={
-                        <Protected roles={["hospitaladmin", "superadmin", "patient"]}>
-                          <PaymentsPageFull />
-                        </Protected>
-                      }
-                    />
+            {/* Payments */}
+            <Route path="payments" element={<PaymentsPage />} />
+            <Route path="payments/full" element={<PaymentsPageFull />} />
 
-                    {/* 404 */}
-                    <Route path="*" element={<div>404 — Page not found</div>} />
-                  </Routes>
-                </AppLayout>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </SocketProvider>
-    </AuthProvider>
+            {/* 404 */}
+            <Route path="*" element={<div>404 — Page not found</div>} />
+          </Route>
+        </Route>
+      </Routes>
+    </SocketProvider>
   );
 }
