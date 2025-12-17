@@ -11,7 +11,7 @@ import Notifications from "./components/Notifications";
 import AIChatWS from "./components/AIChatWS";
 
 // Guest / Demo
-import GuestDashboard from "./pages/Guest/GuestDashboard";
+import GuestDashboard from "./pages/GuestDashboard";
 
 // Auth pages
 import Login from "./pages/Login";
