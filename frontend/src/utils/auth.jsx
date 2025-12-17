@@ -24,7 +24,17 @@ export function AuthProvider({ children }) {
       const token = localStorage.getItem("token");
 
       if (storedUser && token) {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+
+        // ✅ Minimal validation
+        if (parsed?.role && parsed?.email) {
+          setUser({
+            ...parsed,
+            role: String(parsed.role), // normalize
+          });
+        } else {
+          localStorage.clear();
+        }
       }
     } catch {
       localStorage.clear();
@@ -37,8 +47,15 @@ export function AuthProvider({ children }) {
      LOGIN
   -------------------------------------------------- */
   const login = (userData, accessToken) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
+    const safeUser = {
+      id: userData.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+    };
+
+    setUser(safeUser);
+    localStorage.setItem("user", JSON.stringify(safeUser));
     localStorage.setItem("token", accessToken);
   };
 
@@ -78,7 +95,7 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
-        isAuthenticated: !!user,
+        isAuthenticated: Boolean(user),
         role: user?.role,
         login,
         loginAsGuest,
