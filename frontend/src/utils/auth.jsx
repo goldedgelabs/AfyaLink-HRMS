@@ -6,6 +6,54 @@ import React, {
 } from "react";
 
 /* ======================================================
+   API FETCH (JWT + SILENT REFRESH)
+====================================================== */
+export async function apiFetch(path, options = {}) {
+  const base = import.meta.env.VITE_API_URL;
+  let token = localStorage.getItem("token");
+
+  let res = await fetch(base + path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+    credentials: "include",
+  });
+
+  // 🔁 Access token expired → try refresh
+  if (res.status === 401) {
+    const refresh = await fetch(base + "/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!refresh.ok) {
+      localStorage.clear();
+      window.location.href = "/login";
+      return Promise.reject("Session expired");
+    }
+
+    const data = await refresh.json();
+    localStorage.setItem("token", data.token);
+
+    // retry original request
+    res = await fetch(base + path, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${data.token}`,
+        ...(options.headers || {}),
+      },
+      credentials: "include",
+    });
+  }
+
+  return res;
+}
+
+/* ======================================================
    AUTH CONTEXT
 ====================================================== */
 
@@ -16,7 +64,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* --------------------------------------------------
-     Restore auth on refresh (SAFE)
+     Restore auth on refresh
   -------------------------------------------------- */
   useEffect(() => {
     try {
@@ -25,13 +73,8 @@ export function AuthProvider({ children }) {
 
       if (storedUser && token) {
         const parsed = JSON.parse(storedUser);
-
-        // ✅ Minimal validation
         if (parsed?.role && parsed?.email) {
-          setUser({
-            ...parsed,
-            role: String(parsed.role), // normalize
-          });
+          setUser(parsed);
         } else {
           localStorage.clear();
         }
@@ -44,33 +87,49 @@ export function AuthProvider({ children }) {
   }, []);
 
   /* --------------------------------------------------
-     LOGIN
+     LOGIN (email + password)
   -------------------------------------------------- */
-  const login = (userData, accessToken) => {
+  const login = async (email, password) => {
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/auth/login`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Invalid credentials");
+    }
+
+    const data = await res.json();
+
     const safeUser = {
-      id: userData.id,
-      name: userData.name,
-      email: userData.email,
-      role: userData.role,
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role,
     };
 
     setUser(safeUser);
     localStorage.setItem("user", JSON.stringify(safeUser));
-    localStorage.setItem("token", accessToken);
+    localStorage.setItem("token", data.token);
+
+    return safeUser;
   };
 
   /* --------------------------------------------------
-     GUEST LOGIN (FRONTEND ONLY)
+     GUEST LOGIN (frontend only)
   -------------------------------------------------- */
   const loginAsGuest = () => {
-    setUser({
-      role: "guest",
-      name: "Demo User",
-    });
+    const guest = { role: "guest", name: "Demo User" };
+    setUser(guest);
   };
 
   /* --------------------------------------------------
-     LOGOUT (INFORM BACKEND)
+     LOGOUT
   -------------------------------------------------- */
   const logout = async () => {
     try {
@@ -82,7 +141,7 @@ export function AuthProvider({ children }) {
         }
       );
     } catch {
-      // ignore network errors
+      // ignore
     } finally {
       localStorage.clear();
       setUser(null);
