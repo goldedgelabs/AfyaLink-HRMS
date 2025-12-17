@@ -1,4 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 /* ======================================================
    AUTH CONTEXT
@@ -11,34 +16,34 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* --------------------------------------------------
-     Restore auth on refresh
+     Restore auth on refresh (SAFE)
   -------------------------------------------------- */
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
+    try {
+      const storedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
 
-    if (storedUser && token) {
-      try {
+      if (storedUser && token) {
         setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.clear();
       }
+    } catch {
+      localStorage.clear();
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
   /* --------------------------------------------------
-     LOGIN (expects API response)
+     LOGIN
   -------------------------------------------------- */
-  const login = (userData, token) => {
+  const login = (userData, accessToken) => {
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("token", token);
+    localStorage.setItem("token", accessToken);
   };
 
   /* --------------------------------------------------
-     GUEST LOGIN (no backend)
+     GUEST LOGIN (FRONTEND ONLY)
   -------------------------------------------------- */
   const loginAsGuest = () => {
     setUser({
@@ -48,11 +53,24 @@ export function AuthProvider({ children }) {
   };
 
   /* --------------------------------------------------
-     LOGOUT
+     LOGOUT (INFORM BACKEND)
   -------------------------------------------------- */
-  const logout = () => {
-    setUser(null);
-    localStorage.clear();
+  const logout = async () => {
+    try {
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/logout`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+    } catch {
+      // ignore network errors
+    } finally {
+      localStorage.clear();
+      setUser(null);
+      window.location.href = "/login";
+    }
   };
 
   return (
@@ -81,35 +99,4 @@ export function useAuth() {
     throw new Error("useAuth must be used inside AuthProvider");
   }
   return ctx;
-}
-
-/* ======================================================
-   API FETCH HELPER
-====================================================== */
-export async function apiFetch(path, options = {}) {
-  const base = import.meta.env.VITE_API_URL || "";
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    throw new Error("Guest users cannot access backend APIs");
-  }
-
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(base + path, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-
-  if (res.status === 401) {
-    localStorage.clear();
-    window.location.href = "/login";
-  }
-
-  return res;
 }
