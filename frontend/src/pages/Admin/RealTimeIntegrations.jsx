@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import API_BASE from "@/config/api";
+import API_BASE from "../../config/api";
+
 
 export default function RealTimeIntegrations() {
   const [source, setSource] = useState("hospital-a");
