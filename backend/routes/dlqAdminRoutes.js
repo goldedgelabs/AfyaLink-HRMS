@@ -1,6 +1,7 @@
 import express from 'express';
 import { listDLQ, getDLQItem, editAndRetry, updateRetryPolicy } from '../controllers/dlqController.js';
-import { auth } from '../middleware/auth.js';
+import auth from '../middleware/auth.js';
+
 const router = express.Router();
 
 router.get('/', auth, listDLQ);
