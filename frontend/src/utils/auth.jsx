@@ -12,6 +12,7 @@ const ROLE_HOME = {
   LabTech: "/lab",
   Pharmacist: "/pharmacy",
   Patient: "/patient",
+  guest: "/guest", // ✅ ADD
 };
 
 /* ======================================================
@@ -28,6 +29,7 @@ export function AuthProvider({ children }) {
 
   /* --------------------------------------------------
      Restore auth on refresh
+     (Guest intentionally NOT restored)
   -------------------------------------------------- */
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -40,11 +42,13 @@ export function AuthProvider({ children }) {
         localStorage.clear();
       }
     }
+
+    // 🧠 If no stored auth → no session (guest expires)
     setLoading(false);
   }, []);
 
   /* --------------------------------------------------
-     LOGIN (with auto-redirect by role)
+     LOGIN (real users only)
   -------------------------------------------------- */
   const login = (userData, token) => {
     if (!userData || !userData.role) {
@@ -58,6 +62,19 @@ export function AuthProvider({ children }) {
 
     const target = ROLE_HOME[userData.role] || "/";
     navigate(target, { replace: true });
+  };
+
+  /* --------------------------------------------------
+     GUEST LOGIN (NO backend, NO storage)
+  -------------------------------------------------- */
+  const loginAsGuest = () => {
+    const guestUser = {
+      role: "guest",
+      name: "Demo User",
+    };
+
+    setUser(guestUser);
+    navigate("/guest", { replace: true });
   };
 
   /* --------------------------------------------------
@@ -77,6 +94,7 @@ export function AuthProvider({ children }) {
         isAuthenticated: !!user,
         role: user?.role,
         login,
+        loginAsGuest, // ✅ EXPORT
         logout,
       }}
     >
@@ -97,20 +115,22 @@ export function useAuth() {
 }
 
 /* ======================================================
-   API FETCH HELPER (JWT-aware)
+   API FETCH HELPER (BLOCKED FOR GUESTS)
 ====================================================== */
 export async function apiFetch(path, options = {}) {
   const base = import.meta.env.VITE_API_URL || "";
   const token = localStorage.getItem("token");
 
+  // 🚫 Guests never hit backend
+  if (!token) {
+    throw new Error("Guest users cannot access backend APIs");
+  }
+
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
+    Authorization: `Bearer ${token}`,
   };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   const res = await fetch(base + path, {
     ...options,
