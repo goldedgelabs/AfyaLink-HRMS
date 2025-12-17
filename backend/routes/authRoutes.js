@@ -1,20 +1,20 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import User from "../models/User.js";
-import {
-  signAccessToken,
-  signRefreshToken,
-} from "../utils/jwt.js";
+import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
+import { redis } from "../utils/redis.js";
+import { sendEmail } from "../utils/mailer.js";
 
 const router = express.Router();
 
 /* ======================================================
-   REGISTER (🔒 ROLE LOCKED)
+   REGISTER (EMAIL VERIFICATION ENABLED)
 ====================================================== */
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body; // 🔒 role REMOVED
+    const { name, email, password } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ msg: "Missing fields" });
@@ -29,15 +29,37 @@ router.post("/register", async (req, res) => {
       name,
       email,
       password,
-      role: "Patient", // 🔒 HARD LOCK
+      role: "Patient",
+      emailVerified: false, // 🔒 NEW
     });
 
     await user.save();
 
-    const safe = user.toObject();
-    delete safe.password;
+    // 🔐 CREATE VERIFICATION TOKEN
+    const token = crypto.randomBytes(32).toString("hex");
 
-    res.status(201).json({ user: safe });
+    await redis.set(
+      `verify:${token}`,
+      user._id.toString(),
+      { ex: 60 * 60 * 24 } // 24 hours
+    );
+
+    const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+
+    await sendEmail({
+      to: email,
+      subject: "Verify your AfyaLink account",
+      html: `
+        <h2>Welcome to AfyaLink HRMS</h2>
+        <p>Please verify your email to activate your account:</p>
+        <a href="${verifyLink}">${verifyLink}</a>
+        <p>This link expires in 24 hours.</p>
+      `,
+    });
+
+    res.status(201).json({
+      msg: "Registration successful. Check your email to verify your account.",
+    });
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({ msg: "Server error" });
@@ -45,7 +67,38 @@ router.post("/register", async (req, res) => {
 });
 
 /* ======================================================
-   LOGIN
+   VERIFY EMAIL
+====================================================== */
+router.get("/verify-email", async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).send("Invalid verification link");
+    }
+
+    const userId = await redis.get(`verify:${token}`);
+    if (!userId) {
+      return res.status(400).send("Verification link expired or invalid");
+    }
+
+    await User.findByIdAndUpdate(userId, {
+      emailVerified: true,
+    });
+
+    await redis.del(`verify:${token}`);
+
+    res.redirect(
+      `${process.env.FRONTEND_URL}/login?verified=true`
+    );
+  } catch (err) {
+    console.error("Verify email error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+/* ======================================================
+   LOGIN (BLOCK UNVERIFIED USERS)
 ====================================================== */
 router.post("/login", async (req, res) => {
   try {
@@ -54,6 +107,12 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ msg: "Invalid credentials" });
+    }
+
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        msg: "Please verify your email before logging in",
+      });
     }
 
     const valid = await bcrypt.compare(password, user.password);
@@ -76,21 +135,18 @@ router.post("/login", async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,          // REQUIRED (HTTPS)
-      sameSite: "none",      // REQUIRED (Vercel ↔ Render)
+      secure: true,
+      sameSite: "none",
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
-
-    const safe = user.toObject();
-    delete safe.password;
 
     res.json({
       accessToken,
       user: {
-        id: safe._id,
-        name: safe.name,
-        email: safe.email,
-        role: safe.role,
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -100,7 +156,7 @@ router.post("/login", async (req, res) => {
 });
 
 /* ======================================================
-   REFRESH TOKEN (🔁 ENV FIXED)
+   REFRESH TOKEN
 ====================================================== */
 router.post("/refresh", async (req, res) => {
   try {
@@ -111,7 +167,7 @@ router.post("/refresh", async (req, res) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.REFRESH_SECRET); // ✅ FIXED
+      decoded = jwt.verify(token, process.env.REFRESH_SECRET);
     } catch {
       return res.status(401).json({ msg: "Invalid refresh token" });
     }
@@ -121,9 +177,7 @@ router.post("/refresh", async (req, res) => {
       return res.status(401).json({ msg: "Refresh token revoked" });
     }
 
-    user.refreshTokens = user.refreshTokens.filter(
-      (t) => t !== token
-    );
+    user.refreshTokens = user.refreshTokens.filter((t) => t !== token);
 
     const newRefresh = signRefreshToken({ id: user._id });
     user.refreshTokens.push(newRefresh);
@@ -160,7 +214,7 @@ router.post("/logout", async (req, res) => {
       if (decoded?.id) {
         const user = await User.findById(decoded.id);
         if (user) {
-          user.refreshTokens = (user.refreshTokens || []).filter(
+          user.refreshTokens = user.refreshTokens.filter(
             (t) => t !== token
           );
           await user.save();
