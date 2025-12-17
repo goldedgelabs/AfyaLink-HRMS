@@ -71,25 +71,25 @@ router.post("/login", async (req, res) => {
       id: user._id,
     });
 
-    // store refresh token (rotation support)
+    // 🔄 store refresh token (rotation-ready)
     user.refreshTokens = user.refreshTokens || [];
     user.refreshTokens.push(refreshToken);
     await user.save();
 
-    // 🍪 Refresh token cookie (COOKIE ONLY)
+    // 🍪 REFRESH COOKIE — PRODUCTION SAFE
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
+      secure: true,          // REQUIRED for SameSite=None
+      sameSite: "none",      // REQUIRED for Vercel ↔ Render
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
     const safe = user.toObject();
     delete safe.password;
 
-    // ✅ FRONTEND EXPECTS THIS
+    // ✅ CONSISTENT RESPONSE
     res.json({
-      token: accessToken,
+      accessToken,
       user: {
         id: safe._id,
         name: safe.name,
@@ -117,7 +117,7 @@ router.post("/refresh", async (req, res) => {
     try {
       decoded = jwt.verify(
         token,
-        process.env.REFRESH_SECRET
+        process.env.JWT_REFRESH_SECRET
       );
     } catch {
       return res.status(401).json({ msg: "Invalid refresh token" });
@@ -142,8 +142,8 @@ router.post("/refresh", async (req, res) => {
 
     res.cookie("refreshToken", newRefresh, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
+      secure: true,
+      sameSite: "none",
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
@@ -152,7 +152,7 @@ router.post("/refresh", async (req, res) => {
       role: user.role,
     });
 
-    res.json({ token: newAccessToken });
+    res.json({ accessToken: newAccessToken });
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: "Server error" });
@@ -179,7 +179,11 @@ router.post("/logout", async (req, res) => {
       }
     }
 
-    res.clearCookie("refreshToken");
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
 
     res.json({ msg: "Logged out" });
   } catch (err) {
