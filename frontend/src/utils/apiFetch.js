@@ -13,9 +13,9 @@ export async function apiFetch(path, options = {}) {
     },
   });
 
-  // 🔁 Silent refresh
+  // 🔁 Silent refresh (MATCH BACKEND PATH)
   if (res.status === 401) {
-    const refresh = await fetch(`${base}/auth/refresh`, {
+    const refresh = await fetch(`${base}/api/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });
