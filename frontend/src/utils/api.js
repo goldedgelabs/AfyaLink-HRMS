@@ -1,20 +1,22 @@
 import axios from 'axios';
 
-// Set the base URL depending on environment
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 
-           (process.env.NODE_ENV === 'production' 
-             ? 'https://afyalink-hrms-4.onrender.com/api' 
-             : 'http://localhost:5000/api'),
-  withCredentials: true // Important for cookies
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  withCredentials: true, // important for cookies / refresh tokens
+  timeout: 20000,
 });
 
 // Attach JWT token if present
-API.interceptors.request.use(cfg => {
-  const token = localStorage.getItem('token');
-  if (token) cfg.headers.Authorization = `Bearer ${token}`;
-  return cfg;
-});
+API.interceptors.request.use(
+  (cfg) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      cfg.headers.Authorization = `Bearer ${token}`;
+    }
+    return cfg;
+  },
+  (error) => Promise.reject(error)
+);
 
 // ===================== AUTH =====================
 export const login = (data) => API.post('/auth/login', data);
@@ -43,22 +45,28 @@ export const updatePatient = (id, data) => API.put(`/patients/${id}`, data);
 // ===================== APPOINTMENTS =====================
 export const getAppointments = () => API.get('/appointments');
 export const createAppointment = (data) => API.post('/appointments', data);
-export const updateAppointment = (id, data) => API.put(`/appointments/${id}`, data);
-export const deleteAppointment = (id) => API.delete(`/appointments/${id}`);
+export const updateAppointment = (id, data) =>
+  API.put(`/appointments/${id}`, data);
+export const deleteAppointment = (id) =>
+  API.delete(`/appointments/${id}`);
 
 // ===================== LABS =====================
 export const getLabTests = () => API.get('/labs');
 export const createLabTest = (data) => API.post('/labs', data);
-export const updateLabTest = (id, data) => API.put(`/labs/${id}`, data);
+export const updateLabTest = (id, data) =>
+  API.put(`/labs/${id}`, data);
 
 // ===================== FINANCIALS =====================
 export const getFinancials = () => API.get('/financials');
-export const createFinancial = (data) => API.post('/financials', data);
-export const updateFinancial = (id, data) => API.put(`/financials/${id}`, data);
+export const createFinancial = (data) =>
+  API.post('/financials', data);
+export const updateFinancial = (id, data) =>
+  API.put(`/financials/${id}`, data);
 
 // ===================== TRANSFERS =====================
 export const getTransfers = () => API.get('/transfers');
-export const createTransfer = (data) => API.post('/transfers', data);
+export const createTransfer = (data) =>
+  API.post('/transfers', data);
 
 // ===================== NOTIFICATIONS =====================
 export const getNotifications = () => API.get('/notifications');
