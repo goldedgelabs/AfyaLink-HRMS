@@ -11,8 +11,8 @@ import Notifications from "./components/Notifications";
 import AIChatWS from "./components/AIChatWS";
 
 // Auth pages
-import Login from "./pages/Auth/Login";
-import Register from "./pages/Auth/Register";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 // Dashboards
 import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
