@@ -5,65 +5,41 @@ export default function GuestDashboard() {
   const navigate = useNavigate();
 
   return (
-    <div
-      style={{
-        padding: 40,
-        maxWidth: 900,
-        margin: "0 auto",
-      }}
-    >
-      <h1>AfyaLink Demo</h1>
+    <div className="guest-wrap">
+      <header className="guest-header">
+        <h1>AfyaLink HRMS</h1>
+        <span className="guest-badge">Demo Mode</span>
+      </header>
 
-      <p style={{ opacity: 0.8 }}>
-        You are exploring AfyaLink in <strong>Demo Mode</strong>.
+      <p className="guest-subtitle">
+        You’re exploring AfyaLink in a <strong>read-only demo environment</strong>.
       </p>
 
-      <div
-        style={{
-          marginTop: 24,
-          padding: 20,
-          borderRadius: 8,
-          background: "#111",
-          color: "#f5c26b",
-        }}
-      >
-        <strong>Read-only experience</strong>
-        <p style={{ marginTop: 8 }}>
-          You can browse the interface and AI features.
-          Creating, editing, payments, and admin actions are disabled.
-        </p>
-      </div>
+      <section className="guest-info">
+        <h3>What you can do</h3>
+        <ul>
+          <li>✔ Preview dashboards & navigation</li>
+          <li>✔ Explore AI medical tools</li>
+          <li>✔ See role-based layouts</li>
+        </ul>
 
-      <div style={{ marginTop: 32 }}>
-        <button
-          onClick={() => navigate("/register")}
-          style={{
-            padding: "10px 18px",
-            borderRadius: 6,
-            background: "#000",
-            color: "#fff",
-            border: "none",
-            cursor: "pointer",
-            marginRight: 12,
-          }}
-        >
-          Unlock Full Access
+        <h3 style={{ marginTop: 16 }}>What’s locked</h3>
+        <ul>
+          <li>🔒 Creating or editing records</li>
+          <li>🔒 Payments & prescriptions</li>
+          <li>🔒 Admin & staff actions</li>
+        </ul>
+      </section>
+
+      <section className="guest-cta">
+        <button className="primary" onClick={() => navigate("/register")}>
+          Create Free Patient Account
         </button>
 
-        <button
-          onClick={() => navigate("/login")}
-          style={{
-            padding: "10px 18px",
-            borderRadius: 6,
-            background: "transparent",
-            color: "#000",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-          }}
-        >
-          Login
+        <button className="secondary" onClick={() => navigate("/login")}>
+          Sign In
         </button>
-      </div>
+      </section>
     </div>
   );
 }
