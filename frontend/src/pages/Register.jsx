@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../utils/auth";
+import { useAuth } from "../utils/auth";
+
 
 export default function Register({ currentRole, editingStaff }) {
   const [name, setName] = useState("");
