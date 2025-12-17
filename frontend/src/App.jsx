@@ -16,6 +16,7 @@ import GuestDashboard from "./pages/GuestDashboard";
 // Auth pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
 import Unauthorized from "./pages/Unauthorized";
 
 // Dashboards
@@ -116,6 +117,7 @@ export default function App() {
         {/* ---------------- PUBLIC ---------------- */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* ---------------- GUEST / DEMO ---------------- */}
