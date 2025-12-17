@@ -1,17 +1,21 @@
-// frontend/src/services/pharmacyApi.js
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api', // ensure this points to backend
-  timeout: 20000
+  baseURL: import.meta.env.VITE_API_URL || '/api', // ✅ Vite env
+  timeout: 20000,
 });
 
 // optional: attach auth token via interceptor if you use JWT
-API.interceptors.request.use(cfg => {
-  const token = localStorage.getItem('token') || null;
-  if (token) cfg.headers.Authorization = `Bearer ${token}`;
-  return cfg;
-});
+API.interceptors.request.use(
+  (cfg) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      cfg.headers.Authorization = `Bearer ${token}`;
+    }
+    return cfg;
+  },
+  (error) => Promise.reject(error)
+);
 
 export async function listItems({ q, page = 1, limit = 25 } = {}) {
   const params = { q, page, limit };
@@ -50,5 +54,11 @@ export async function dispenseStock(id, payload) {
 }
 
 export default {
-  listItems, getItem, createItem, updateItem, deleteItem, addStock, dispenseStock
+  listItems,
+  getItem,
+  createItem,
+  updateItem,
+  deleteItem,
+  addStock,
+  dispenseStock,
 };
