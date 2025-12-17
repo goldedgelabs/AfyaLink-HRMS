@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../utils/auth";
+import PasswordInput from "../components/PasswordInput";
 
 export default function Login() {
   const { login, loading } = useAuth();
@@ -11,7 +12,7 @@ export default function Login() {
   const [error, setError] = useState("");
 
   /* ---------------------------------------
-   Load remembered email (if any)
+     Load remembered email (if any)
   ---------------------------------------- */
   useEffect(() => {
     const savedEmail = localStorage.getItem("remember_email");
@@ -22,7 +23,7 @@ export default function Login() {
   }, []);
 
   /* ---------------------------------------
-   Submit handler
+     Submit handler
   ---------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,7 +37,7 @@ export default function Login() {
       }
 
       await login(email, password);
-    } catch (err) {
+    } catch {
       setError("Invalid email or password");
     }
   };
@@ -44,24 +45,22 @@ export default function Login() {
   return (
     <div className="auth-bg">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>AfyaLink HRMS</h1>
-        <p className="subtitle">Sign in to your account</p>
+        <h1>Welcome back</h1>
+        <p className="subtitle">Sign in to AfyaLink HRMS</p>
 
-        {error && <div className="error">{error}</div>}
+        {error && <div className="auth-error">{error}</div>}
 
-        <label>Email</label>
+        <label>Email address</label>
         <input
           type="email"
-          placeholder="admin@afya.test"
+          placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
 
-        <label>Password</label>
-        <input
-          type="password"
-          placeholder="••••••••"
+        <PasswordInput
+          label="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -84,7 +83,7 @@ export default function Login() {
         </div>
 
         <button disabled={loading}>
-          {loading ? "Signing in..." : "Login"}
+          {loading ? "Signing in..." : "Sign in"}
         </button>
 
         <div className="auth-footer">
