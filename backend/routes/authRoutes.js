@@ -198,6 +198,38 @@ router.post("/forgot-password", async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 });
+/* ======================================================
+   RESET PASSWORD
+====================================================== */
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ msg: "Invalid request" });
+    }
+
+    const userId = await redis.get(`reset:${token}`);
+    if (!userId) {
+      return res.status(400).json({ msg: "Token expired or invalid" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({ msg: "User not found" });
+    }
+
+    user.password = password; // 🔐 hashed by pre-save hook
+    await user.save();
+
+    await redis.del(`reset:${token}`);
+
+    res.json({ msg: "Password reset successful" });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
 
 /* ======================================================
    LOGIN (BLOCK UNVERIFIED USERS)
