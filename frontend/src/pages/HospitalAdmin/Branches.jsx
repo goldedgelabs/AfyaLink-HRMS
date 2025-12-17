@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import API_BASE from "@/config/api";
+import API_BASE from "../../config/api";
+
 
 export default function Branches() {
   const [branches, setBranches] = useState([]);
