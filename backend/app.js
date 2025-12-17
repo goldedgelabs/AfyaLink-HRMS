@@ -31,24 +31,14 @@ const app = express();
 import './utils/logger.js'; // centralized logger
 
 // =======================================================
-// ✅ SAFE CORS FIX — COOKIES + JWT REFRESH WORK
+// ✅ PRODUCTION CORS (VERCEL + RENDER SAFE)
 // =======================================================
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:5173',
-].filter(Boolean);
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS blocked: ${origin}`));
-      }
-    },
+    origin: process.env.FRONTEND_URL,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 // =======================================================
