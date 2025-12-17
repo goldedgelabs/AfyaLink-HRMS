@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import API_BASE from "@/config/api";
+import API_BASE from "../../config/api";
+
 
 export default function PaymentsPageFull() {
   const [amount, setAmount] = useState(100);
