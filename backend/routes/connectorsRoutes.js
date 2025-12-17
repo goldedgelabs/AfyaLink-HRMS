@@ -1,6 +1,14 @@
 import express from 'express';
-import { createConnector, listConnectors, testRestConnection, testFHIR, connectorAnalytics } from '../controllers/connectorsController.js';
-import { auth } from '../middleware/auth.js';
+import {
+  createConnector,
+  listConnectors,
+  testRestConnection,
+  testFHIR,
+  connectorAnalytics
+} from '../controllers/connectorsController.js';
+
+import auth from '../middleware/auth.js'; // ✅ FIX HERE
+
 const router = express.Router();
 
 router.post('/', auth, createConnector);
