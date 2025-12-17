@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../utils/auth";
+import { useAuth } from "../utils/auth";
+
 
 export default function Login() {
   const [email, setEmail] = useState("admin@afya.test");
