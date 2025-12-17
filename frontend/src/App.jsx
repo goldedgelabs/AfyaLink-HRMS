@@ -61,22 +61,23 @@ import NotificationsPage from "./pages/Admin/NotificationsPage";
 import CRDTPatientEditor from "./pages/Admin/CRDTPatientEditor";
 import RealTimeIntegrations from "./pages/Admin/RealTimeIntegrations";
 
-/* -------------------------
-   Protected Route
-------------------------- */
+/* =====================================================
+   PROTECTED ROUTE
+===================================================== */
 function Protected({ roles }) {
   const { user, loading } = useAuth();
 
   if (loading) return null;
 
-  // 🔐 No session → login
+  // 🔐 No session
   if (!user) return <Navigate to="/login" replace />;
 
-  // 🚫 Guest blocked from protected app
+  // 🚫 Guest blocked from real app
   if (user.role === "guest") {
     return <Navigate to="/guest" replace />;
   }
 
+  // ⛔ Role check
   if (roles && !roles.includes(user.role)) {
     return <div style={{ padding: 20 }}>⛔ Access denied</div>;
   }
@@ -84,9 +85,9 @@ function Protected({ roles }) {
   return <Outlet />;
 }
 
-/* -------------------------
-   Layout
-------------------------- */
+/* =====================================================
+   APP LAYOUT
+===================================================== */
 function AppLayout() {
   const { user } = useAuth();
 
@@ -104,21 +105,21 @@ function AppLayout() {
   );
 }
 
-/* -------------------------
+/* =====================================================
    APP
-------------------------- */
+===================================================== */
 export default function App() {
   return (
     <SocketProvider>
       <Routes>
-        {/* Public */}
+        {/* ---------------- PUBLIC ---------------- */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* ✅ Guest / Demo (NO backend) */}
+        {/* ---------------- GUEST / DEMO ---------------- */}
         <Route path="/guest" element={<GuestDashboard />} />
 
-        {/* Protected App (real users only) */}
+        {/* ---------------- AUTHENTICATED APP ---------------- */}
         <Route element={<Protected />}>
           <Route element={<AppLayout />}>
             <Route index element={<div>Welcome to AfyaLink HRMS</div>} />
