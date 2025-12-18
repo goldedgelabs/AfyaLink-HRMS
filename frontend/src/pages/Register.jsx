@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PasswordInput from "../components/PasswordInput";
-import axios from "axios";
+import { apiFetch } from "../utils/auth";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -32,26 +32,25 @@ export default function Register() {
     try {
       setLoading(true);
 
-      // ✅ CALL BACKEND REGISTER (PRODUCTION PATH)
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/register`,
-        {
+      const res = await apiFetch("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
           name: form.name,
           email: form.email,
           password: form.password,
-          role: "Patient", // must match backend casing
-        },
-        { withCredentials: true }
-      );
+          role: "patient", // ✅ force patient-only
+        }),
+      });
 
-      // ✅ Redirect to login after success
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data?.msg || "Registration failed");
+      }
+
+      // ✅ Success → go to login
       navigate("/login");
     } catch (err) {
-      console.error(err);
-      setError(
-        err?.response?.data?.msg ||
-          "Registration failed. Try again."
-      );
+      setError(err.message || "Registration failed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -61,9 +60,7 @@ export default function Register() {
     <div className="auth-bg">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Create your account</h1>
-        <p className="subtitle">
-          Join AfyaLink HRMS as a patient
-        </p>
+        <p className="subtitle">Join AfyaLink HRMS as a patient</p>
 
         {error && <div className="auth-error">{error}</div>}
 
@@ -109,9 +106,7 @@ export default function Register() {
         />
 
         <button disabled={loading}>
-          {loading
-            ? "Creating account..."
-            : "Create account"}
+          {loading ? "Creating account..." : "Create account"}
         </button>
 
         <div className="auth-footer">
