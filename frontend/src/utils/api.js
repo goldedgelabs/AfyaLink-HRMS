@@ -1,4 +1,6 @@
-// Placeholder to redirect imports from "api" to apiFetch
+// src/utils/api.js
+// Redirect all old api imports to apiFetch.js
+
 export * from './apiFetch';
 
 // Optional default export for imports like `import API from '../utils/api'`
