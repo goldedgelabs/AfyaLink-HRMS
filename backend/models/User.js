@@ -34,8 +34,14 @@ const userSchema = new Schema(
 
     active: { type: Boolean, default: true },
 
-    // ✅ REQUIRED FOR EMAIL VERIFICATION
+    // ✅ Email verification
     emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    // 🔐 2FA (Email OTP)
+    twoFactorEnabled: {
       type: Boolean,
       default: false,
     },
