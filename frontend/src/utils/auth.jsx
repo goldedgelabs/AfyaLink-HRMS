@@ -1,10 +1,22 @@
-import React, {
+import {
   createContext,
   useContext,
   useEffect,
   useState,
 } from "react";
 import { apiFetch, logout as apiLogout } from "./apiFetch";
+
+/* ======================================================
+   JWT PARSER (2FA FLAG)
+====================================================== */
+function parseJwt(token) {
+  try {
+    const base64 = token.split(".")[1];
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
 
 /* ======================================================
    AUTH CONTEXT
@@ -16,7 +28,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* --------------------------------------------------
-     Restore session on reload
+     Restore session on reload (WITH 2FA STATE)
   -------------------------------------------------- */
   useEffect(() => {
     try {
@@ -24,12 +36,13 @@ export function AuthProvider({ children }) {
       const token = localStorage.getItem("token");
 
       if (storedUser && token) {
-        const parsed = JSON.parse(storedUser);
-        if (parsed?.id && parsed?.role) {
-          setUser(parsed);
-        } else {
-          localStorage.clear();
-        }
+        const parsedUser = JSON.parse(storedUser);
+        const decoded = parseJwt(token);
+
+        setUser({
+          ...parsedUser,
+          twoFactorVerified: decoded?.twoFactor !== false,
+        });
       }
     } catch {
       localStorage.clear();
@@ -40,7 +53,7 @@ export function AuthProvider({ children }) {
 
   /* --------------------------------------------------
      LOGIN
-     (handles both normal + 2FA-required users)
+     (normal + 2FA-required users)
   -------------------------------------------------- */
   const login = async (email, password) => {
     const res = await apiFetch("/api/auth/login", {
@@ -54,8 +67,9 @@ export function AuthProvider({ children }) {
       throw new Error(data.msg || "Login failed");
     }
 
-    // 🔐 2FA REQUIRED → frontend will redirect
+    // 🔐 2FA REQUIRED → stop here
     if (data.requires2FA) {
+      localStorage.setItem("2fa_pending", "true");
       return { requires2FA: true };
     }
 
@@ -69,21 +83,33 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem("token", data.accessToken);
     localStorage.setItem("user", JSON.stringify(safeUser));
-    setUser(safeUser);
+
+    const decoded = parseJwt(data.accessToken);
+
+    setUser({
+      ...safeUser,
+      twoFactorVerified: decoded?.twoFactor !== false,
+    });
 
     return { user: safeUser };
   };
 
   /* --------------------------------------------------
-     COMPLETE 2FA (after OTP verification)
+     COMPLETE 2FA (after OTP verify)
+     🔓 Unlocks dashboard automatically
   -------------------------------------------------- */
   const complete2FA = (accessToken) => {
     localStorage.setItem("token", accessToken);
+    localStorage.removeItem("2fa_pending");
 
-    // user already exists from initial login
     const storedUser = localStorage.getItem("user");
+    const decoded = parseJwt(accessToken);
+
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      setUser({
+        ...JSON.parse(storedUser),
+        twoFactorVerified: decoded?.twoFactor !== false,
+      });
     }
   };
 
@@ -96,7 +122,7 @@ export function AuthProvider({ children }) {
     } finally {
       localStorage.clear();
       setUser(null);
-      apiLogout(); // safe redirect helper
+      apiLogout();
     }
   };
 
