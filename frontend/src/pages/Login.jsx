@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/auth";
 import PasswordInput from "../components/PasswordInput";
-import axios from "axios";
 
 export default function Login() {
   const { login, loading } = useAuth();
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,8 +13,6 @@ export default function Login() {
 
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [resendMsg, setResendMsg] = useState("");
-  const [showResend, setShowResend] = useState(false);
 
   /* ---------------------------------------
      Load remembered email
@@ -28,13 +26,12 @@ export default function Login() {
   }, []);
 
   /* ---------------------------------------
-     Submit handler
+     Submit handler (SAFE)
   ---------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setInfo("");
-    setShowResend(false);
 
     try {
       if (rememberMe) {
@@ -43,46 +40,11 @@ export default function Login() {
         localStorage.removeItem("remember_email");
       }
 
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/login`,
-        { email, password },
-        { withCredentials: true }
-      );
+      await login(email, password);
 
-      const { user, accessToken } = res.data;
-      login(user, accessToken);
+      navigate("/dashboard");
     } catch (err) {
-      console.error(err);
-
-      const msg =
-        err?.response?.data?.msg || "Invalid email or password";
-
-      setError(msg);
-
-      // 🔔 Email not verified → show resend option
-      if (msg.toLowerCase().includes("verify")) {
-        setShowResend(true);
-      }
-    }
-  };
-
-  /* ---------------------------------------
-     Resend verification email
-  ---------------------------------------- */
-  const resendVerification = async () => {
-    setResendMsg("Sending verification email...");
-
-    try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/resend-verification`,
-        { email }
-      );
-
-      setResendMsg(res.data.msg || "Verification email sent");
-    } catch (err) {
-      setResendMsg(
-        err?.response?.data?.msg || "Failed to send email"
-      );
+      setError(err.message || "Invalid email or password");
     }
   };
 
@@ -129,20 +91,6 @@ export default function Login() {
         <button disabled={loading}>
           {loading ? "Signing in..." : "Sign in"}
         </button>
-
-        {/* 🔁 RESEND VERIFICATION */}
-        {showResend && (
-          <div style={{ marginTop: 16 }}>
-            <button
-              type="button"
-              onClick={resendVerification}
-              className="link-btn"
-            >
-              Resend verification email
-            </button>
-            {resendMsg && <p>{resendMsg}</p>}
-          </div>
-        )}
 
         <div className="auth-footer">
           <span>Don’t have an account?</span>
