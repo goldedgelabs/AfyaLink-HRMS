@@ -14,6 +14,7 @@ import './utils/logger.js'; // centralized logger
 // Routes
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import profileRoutes from './routes/profileRoutes.js'; // ✅ NEW
 import hospitalRoutes from './routes/hospitalRoutes.js';
 import patientRoutes from './routes/patientRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
@@ -82,7 +83,6 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
-// =======================================================
 
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
@@ -91,6 +91,8 @@ app.use(morgan('dev'));
 // =================== MAIN ROUTES ===================
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/profile', profileRoutes); // ✅ PROFILE ROUTES
+
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/appointments', appointmentRoutes);
