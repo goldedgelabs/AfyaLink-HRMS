@@ -5,6 +5,13 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import dotenvExpand from 'dotenv-expand';
 
+// Load and expand env
+const env = dotenv.config();
+dotenvExpand.expand(env);
+
+import './utils/logger.js'; // centralized logger
+
+// Routes
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import hospitalRoutes from './routes/hospitalRoutes.js';
@@ -17,25 +24,59 @@ import transferRoutes from './routes/transferRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import mlRoutes from './routes/mlRoutes.js';
-
-// ✅ ADD M-PESA ROUTES
 import mpesaRoutes from './routes/mpesa.routes.js';
+
+import analyticsRoutes from './routes/analyticsRoutes.js';
+import pharmacyRoutes from './routes/pharmacyRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
+import appointmentsAdminRoutes from './routes/appointments_adminRoutes.js';
+import billingRoutes from './routes/billingRoutes.js';
+import reportsRoutes from './routes/reportsRoutes.js';
+import branchesRoutes from './routes/branchesRoutes.js';
+import aiAdminRoutes from './routes/ai_adminRoutes.js';
+import transactionsRoutes from './routes/transactionsRoutes.js';
+import stripeRoutes from './routes/stripeRoutes.js';
+import flutterwaveRoutes from './routes/flutterwaveRoutes.js';
+import bedsRoutes from './routes/bedsRoutes.js';
+import triageRoutes from './routes/triageRoutes.js';
+import connectorsRoutes from './routes/connectorsRoutes.js';
+import paymentSettingsRoutes from './routes/paymentSettingsRoutes.js';
+import webhookReceiverRoutes from './routes/webhookReceiverRoutes.js';
+import integrationWebhookRoutes from './routes/integrationWebhookRoutes.js';
+import mappingRoutes from './routes/mappingRoutes.js';
+import offlineRoutes from './routes/offlineRoutes.js';
+import dlqRoutes from './routes/dlqRoutes.js';
+import dlqInspectRoutes from './routes/dlqInspectRoutes.js';
+import dlqAdminRoutes from './routes/dlqAdminRoutes.js';
+import crdtRoutes from './routes/crdtRoutes.js';
+import crdtApiRoutes from './routes/crdtApiRoutes.js';
+import crdtChunkRoutes from './routes/crdtChunkRoutes.js';
+import signalingTokenRoutes from './routes/signalingTokenRoutes.js';
 
 import errorHandler from './middleware/errorHandler.js';
 
-// Load and expand environment variables
-const env = dotenv.config();
-dotenvExpand.expand(env);
+// Workers
+import './workers/notificationWorker.js';
 
 const app = express();
-import './utils/logger.js'; // centralized logger
 
 // =======================================================
-// ✅ PRODUCTION CORS (VERCEL + RENDER SAFE)
+// ✅ PRODUCTION CORS — VERCEL + RENDER + SOCKET SAFE
 // =======================================================
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://afya-link-hrms-frontend-4.vercel.app',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -47,7 +88,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(morgan('dev'));
 
-// Main Routes
+// =================== MAIN ROUTES ===================
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/hospitals', hospitalRoutes);
@@ -61,99 +102,49 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ml', mlRoutes);
 
-// ✅ M-PESA ROUTES
+// Payments
 app.use('/api/payments/mpesa', mpesaRoutes);
-
-// Root ping
-app.get('/', (req, res) =>
-  res.send('AfyaLink HRMS Backend is running 🚀')
-);
-
-// Error handler
-app.use(errorHandler);
-
-// Extra Routes
-import analyticsRoutes from './routes/analyticsRoutes.js';
-app.use('/api/analytics', analyticsRoutes);
-
-import pharmacyRoutes from './routes/pharmacyRoutes.js';
-app.use('/api/pharmacy', pharmacyRoutes);
-
-import inventoryRoutes from './routes/inventoryRoutes.js';
-app.use('/api/inventory', inventoryRoutes);
-
-import appointments_adminRoutes from './routes/appointments_adminRoutes.js';
-app.use('/api/appointments_admin', appointments_adminRoutes);
-
-import billingRoutes from './routes/billingRoutes.js';
-app.use('/api/billing', billingRoutes);
-
-import reportsRoutes from './routes/reportsRoutes.js';
-app.use('/api/reports', reportsRoutes);
-
-import branchesRoutes from './routes/branchesRoutes.js';
-app.use('/api/branches', branchesRoutes);
-
-import ai_adminRoutes from './routes/ai_adminRoutes.js';
-app.use('/api/ai_admin', ai_adminRoutes);
-
-import paymentsRoutes from './routes/paymentsRoutes.js';
-import aiRouter from './ai/aiRouter.js';
-
-import './workers/notificationWorker.js';
-
-import transactionsRoutes from './routes/transactionsRoutes.js';
-app.use('/api/transactions', transactionsRoutes);
-
-import stripeRoutes from './routes/stripeRoutes.js';
 app.use('/api/payments/stripe', stripeRoutes);
-
-import flutterwaveRoutes from './routes/flutterwaveRoutes.js';
 app.use('/api/payments/flutterwave', flutterwaveRoutes);
-
-import bedsRoutes from './routes/bedsRoutes.js';
-app.use('/api/beds', bedsRoutes);
-
-import triageRoutes from './routes/triageRoutes.js';
-app.use('/api/triage', triageRoutes);
-
-import connectorsRoutes from './routes/connectorsRoutes.js';
-app.use('/api/connectors', connectorsRoutes);
-
-export default app;
-
-import paymentSettingsRoutes from './routes/paymentSettingsRoutes.js';
 app.use('/api/payment-settings', paymentSettingsRoutes);
 
-import webhookReceiverRoutes from './routes/webhookReceiverRoutes.js';
+// Admin / Core
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/pharmacy', pharmacyRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/appointments_admin', appointmentsAdminRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/branches', branchesRoutes);
+app.use('/api/ai_admin', aiAdminRoutes);
+app.use('/api/transactions', transactionsRoutes);
+
+// Clinical
+app.use('/api/beds', bedsRoutes);
+app.use('/api/triage', triageRoutes);
+
+// Integrations
+app.use('/api/connectors', connectorsRoutes);
 app.use('/api/webhooks', webhookReceiverRoutes);
-
-import integrationWebhookRoutes from './routes/integrationWebhookRoutes.js';
 app.use('/api/integrations/webhook', integrationWebhookRoutes);
-
-import mappingRoutes from './routes/mappingRoutes.js';
-app.use('/api/mappings', mappingRoutes);
-
-import offlineRoutes from './routes/offlineRoutes.js';
-app.use('/api/offline', offlineRoutes);
-
-import dlqRoutes from './routes/dlqRoutes.js';
 app.use('/api/integrations/dlq', dlqRoutes);
-
-import dlqInspectRoutes from './routes/dlqInspectRoutes.js';
 app.use('/api/integrations/dlq-inspect', dlqInspectRoutes);
-
-import dlqAdminRoutes from './routes/dlqAdminRoutes.js';
 app.use('/api/integrations/dlq-admin', dlqAdminRoutes);
 
-import crdtRoutes from './routes/crdtRoutes.js';
+// CRDT (FIXED — NO COLLISION)
 app.use('/api/crdt', crdtRoutes);
-
-import crdtApiRoutes from './routes/crdtApiRoutes.js';
 app.use('/api/crdt-api', crdtApiRoutes);
+app.use('/api/crdt/chunks', crdtChunkRoutes);
 
-import crdtChunkRoutes from './routes/crdtChunkRoutes.js';
-app.use('/api/crdt', crdtChunkRoutes);
-
-import signalingTokenRoutes from './routes/signalingTokenRoutes.js';
+// Signaling
 app.use('/api/signaling', signalingTokenRoutes);
+
+// Root health check
+app.get('/', (req, res) => {
+  res.send('AfyaLink HRMS Backend is running 🚀');
+});
+
+// Error handler MUST be last
+app.use(errorHandler);
+
+export default app;
