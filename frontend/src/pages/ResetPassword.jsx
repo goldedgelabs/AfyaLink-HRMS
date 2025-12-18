@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { apiFetch } from "../utils/auth";
 import PasswordInput from "../components/PasswordInput";
 
 export default function ResetPassword() {
@@ -18,10 +18,14 @@ export default function ResetPassword() {
     setMsg("");
 
     try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/reset-password`,
-        { token, password }
-      );
+      const res = await apiFetch("/api/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, password }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Invalid or expired link");
+      }
 
       setMsg("Password reset successful. Redirecting...");
       setTimeout(() => navigate("/login"), 2000);
