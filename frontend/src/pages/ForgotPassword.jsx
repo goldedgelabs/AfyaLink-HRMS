@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import { apiFetch } from "../utils/auth";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -12,11 +12,13 @@ export default function ForgotPassword() {
     setMsg("");
 
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/forgot-password`,
-        { email }
-      );
-      setMsg(res.data.msg);
+      const res = await apiFetch("/api/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+      setMsg(data.msg || "Reset link sent");
     } catch {
       setMsg("Something went wrong");
     } finally {
