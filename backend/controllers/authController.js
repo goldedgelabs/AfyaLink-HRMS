@@ -7,7 +7,19 @@ import { redis } from "../utils/redis.js";
 import { sendEmail } from "../utils/mailer.js";
 
 /* ======================================================
-   LOGIN (2FA AWARE)
+   HELPERS — TRUSTED DEVICE
+====================================================== */
+function getDeviceId(req) {
+  const raw =
+    req.headers["x-device-id"] ||
+    req.headers["user-agent"] ||
+    "unknown-device";
+
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+/* ======================================================
+   LOGIN (2FA + TRUSTED DEVICE AWARE)
 ====================================================== */
 export const login = async (req, res) => {
   try {
@@ -25,7 +37,50 @@ export const login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ msg: "Invalid credentials" });
 
-    // 🔐 ENFORCE 2FA
+    /* -----------------------------------------------
+       🔐 TRUSTED DEVICE CHECK
+    ------------------------------------------------ */
+    const deviceId = getDeviceId(req);
+    const trusted = user.trustedDevices?.find(
+      (d) => d.deviceId === deviceId
+    );
+
+    if (trusted) {
+      trusted.lastUsed = new Date();
+      await user.save();
+
+      // ✅ SKIP OTP
+      const accessToken = signAccessToken({
+        id: user._id,
+        role: user.role,
+        twoFactorVerified: true,
+      });
+
+      const refreshToken = signRefreshToken({ id: user._id });
+      user.refreshTokens.push(refreshToken);
+      await user.save();
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 14 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.json({
+        accessToken,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      });
+    }
+
+    /* -----------------------------------------------
+       🔐 2FA REQUIRED (UNTRUSTED DEVICE)
+    ------------------------------------------------ */
     if (user.twoFactorEnabled) {
       const otp = crypto.randomInt(100000, 999999).toString();
 
@@ -49,7 +104,9 @@ export const login = async (req, res) => {
       });
     }
 
-    // ✅ NORMAL LOGIN
+    /* -----------------------------------------------
+       ✅ NORMAL LOGIN (2FA OFF)
+    ------------------------------------------------ */
     const accessToken = signAccessToken({
       id: user._id,
       role: user.role,
@@ -83,11 +140,11 @@ export const login = async (req, res) => {
 };
 
 /* ======================================================
-   VERIFY 2FA OTP → ISSUE FULL TOKEN
+   VERIFY 2FA OTP → TRUST DEVICE + ISSUE TOKEN
 ====================================================== */
 export const verify2FAOtp = async (req, res) => {
   try {
-    const { userId, otp } = req.body;
+    const { userId, otp, rememberDevice } = req.body;
 
     const storedOtp = await redis.get(`2fa:${userId}`);
     if (!storedOtp || storedOtp !== otp) {
@@ -98,6 +155,27 @@ export const verify2FAOtp = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
+
+    /* -----------------------------------------------
+       🔐 REGISTER TRUSTED DEVICE
+    ------------------------------------------------ */
+    if (rememberDevice) {
+      const deviceId = getDeviceId(req);
+
+      const exists = user.trustedDevices.some(
+        (d) => d.deviceId === deviceId
+      );
+
+      if (!exists) {
+        user.trustedDevices.push({
+          deviceId,
+          userAgent: req.headers["user-agent"],
+          lastUsed: new Date(),
+        });
+
+        await user.save();
+      }
+    }
 
     const accessToken = signAccessToken({
       id: user._id,
