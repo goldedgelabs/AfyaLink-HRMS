@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { apiFetch } from "../utils/auth";
+import { apiFetch } from "../utils/apiFetch";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
