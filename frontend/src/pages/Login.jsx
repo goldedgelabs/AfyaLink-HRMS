@@ -42,10 +42,17 @@ export default function Login() {
 
       const result = await login(email, password);
 
-      // 🔐 2FA REQUIRED → redirect to OTP screen
+      // 🔐 2FA REQUIRED → redirect with userId
       if (result?.requires2FA) {
         setInfo("Verification code sent to your email");
-        navigate("/2fa");
+
+        navigate("/2fa", {
+          state: {
+            userId: result.userId, // 🔑 REQUIRED
+            email,
+          },
+        });
+
         return;
       }
 
