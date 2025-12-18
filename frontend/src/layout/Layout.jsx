@@ -1,10 +1,15 @@
 import Sidebar from "./Sidebar";
-import { Outlet } from "react-router-dom";
+import { Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../utils/auth";
 
 export default function Layout() {
   const { user } = useAuth();
   const isGuest = user?.role === "guest";
+
+  // 🔐 UX-level 2FA enforcement
+  if (user && user.twoFactorVerified === false) {
+    return <Navigate to="/2fa" replace />;
+  }
 
   return (
     <div style={{ display: "flex", position: "relative" }}>
