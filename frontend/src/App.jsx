@@ -21,8 +21,8 @@ import Unauthorized from "./pages/Unauthorized";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
-// 🔐 2FA
-import TwoFactorVerify from "./pages/TwoFactorVerify";
+// 🔐 2FA (PUBLIC)
+import TwoFactor from "./pages/TwoFactor";
 
 // Dashboards
 import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
@@ -86,8 +86,8 @@ function Protected({ roles }) {
     return <Navigate to="/guest" replace />;
   }
 
-  // 🔐 HARD BLOCK — 2FA NOT VERIFIED
-  if (user.twoFactorVerified === false) {
+  // 🔐 HARD BLOCK — 2FA REQUIRED BUT NOT VERIFIED
+  if (user.twoFactorRequired === true) {
     return <Navigate to="/2fa" replace />;
   }
 
@@ -135,7 +135,7 @@ export default function App() {
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* 🔐 2FA (PUBLIC) */}
-        <Route path="/2fa" element={<TwoFactorVerify />} />
+        <Route path="/2fa" element={<TwoFactor />} />
 
         {/* ---------------- GUEST / DEMO ---------------- */}
         <Route path="/guest" element={<GuestDashboard />} />
