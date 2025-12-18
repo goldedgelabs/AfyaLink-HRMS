@@ -1,16 +1,15 @@
-// Redirect old pharmacyApi imports to apiFetch
-export * from '../utils/apiFetch';
-import api from '../utils/apiFetch';
+// src/services/pharmacyApi.js
+// Placeholder so imports don’t break
 
-// Optional placeholders for named exports previously used
-export const addStock = async () => {
-  console.warn("Placeholder addStock called");
-  return Promise.resolve({ placeholder: true });
-};
-
-export const dispenseStock = async () => {
-  console.warn("Placeholder dispenseStock called");
-  return Promise.resolve({ placeholder: true });
-};
-
-export default api;
+export async function listItems() {
+  throw new Error("pharmacyApi.listItems placeholder called");
+}
+export async function createItem() {
+  throw new Error("pharmacyApi.createItem placeholder called");
+}
+export async function updateItem() {
+  throw new Error("pharmacyApi.updateItem placeholder called");
+}
+export async function deleteItem() {
+  throw new Error("pharmacyApi.deleteItem placeholder called");
+}
