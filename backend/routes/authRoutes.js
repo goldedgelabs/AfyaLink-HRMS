@@ -2,14 +2,18 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+
 import User from "../models/User.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { redis } from "../utils/redis.js";
 import { sendEmail } from "../utils/mailer.js";
 
-// ✅ ADD THESE TWO IMPORTS
-import { changePassword } from "../controllers/authController.js";
 import { auth } from "../middleware/auth.js";
+import {
+  changePassword,
+  send2FAOtp,
+  verify2FAOtp,
+} from "../controllers/authController.js";
 
 const router = express.Router();
 
@@ -29,7 +33,7 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ msg: "Email already in use" });
     }
 
-    const user = new User({
+    const user = await User.create({
       name,
       email,
       password,
@@ -37,9 +41,8 @@ router.post("/register", async (req, res) => {
       emailVerified: false,
     });
 
-    await user.save();
-
     const token = crypto.randomBytes(32).toString("hex");
+
     await redis.set(`verify:${token}`, user._id.toString(), {
       ex: 60 * 60 * 24,
     });
@@ -50,10 +53,9 @@ router.post("/register", async (req, res) => {
       to: email,
       subject: "Verify your AfyaLink account",
       html: `
-        <h2>Welcome to AfyaLink HRMS</h2>
+        <h2>Welcome to AfyaLink</h2>
         <p>Please verify your email:</p>
         <a href="${verifyLink}">${verifyLink}</a>
-        <p>This link expires in 24 hours.</p>
       `,
     });
 
@@ -72,16 +74,15 @@ router.post("/register", async (req, res) => {
 router.post("/resend-verification", async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ msg: "Email is required" });
+    if (!email) return res.status(400).json({ msg: "Email required" });
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "User not found" });
-
-    if (user.emailVerified) {
+    if (user.emailVerified)
       return res.status(400).json({ msg: "Email already verified" });
-    }
 
     const token = crypto.randomBytes(32).toString("hex");
+
     await redis.set(`verify:${token}`, user._id.toString(), {
       ex: 60 * 60 * 24,
     });
@@ -131,13 +132,11 @@ router.post("/forgot-password", async (req, res) => {
     if (!email) return res.status(400).json({ msg: "Email required" });
 
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.json({
-        msg: "If the email exists, a reset link was sent",
-      });
-    }
+    if (!user)
+      return res.json({ msg: "If the email exists, a reset link was sent" });
 
     const token = crypto.randomBytes(32).toString("hex");
+
     await redis.set(`reset:${token}`, user._id.toString(), {
       ex: 60 * 15,
     });
@@ -163,9 +162,8 @@ router.post("/forgot-password", async (req, res) => {
 router.post("/reset-password", async (req, res) => {
   try {
     const { token, password } = req.body;
-    if (!token || !password) {
+    if (!token || !password)
       return res.status(400).json({ msg: "Invalid request" });
-    }
 
     const userId = await redis.get(`reset:${token}`);
     if (!userId) return res.status(400).json({ msg: "Token expired" });
@@ -185,9 +183,19 @@ router.post("/reset-password", async (req, res) => {
 });
 
 /* ======================================================
-   🔐 CHANGE PASSWORD (AUTH REQUIRED)  ✅ NEW
+   CHANGE PASSWORD (AUTH)
 ====================================================== */
 router.post("/change-password", auth, changePassword);
+
+/* ======================================================
+   2FA — SEND OTP (EMAIL)
+====================================================== */
+router.post("/2fa/send", auth, send2FAOtp);
+
+/* ======================================================
+   2FA — VERIFY OTP
+====================================================== */
+router.post("/2fa/verify", auth, verify2FAOtp);
 
 /* ======================================================
    LOGIN
@@ -198,10 +206,8 @@ router.post("/login", async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "Invalid credentials" });
-
-    if (!user.emailVerified) {
+    if (!user.emailVerified)
       return res.status(403).json({ msg: "Verify your email first" });
-    }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ msg: "Invalid credentials" });
@@ -213,7 +219,6 @@ router.post("/login", async (req, res) => {
 
     const refreshToken = signRefreshToken({ id: user._id });
 
-    user.refreshTokens = user.refreshTokens || [];
     user.refreshTokens.push(refreshToken);
     await user.save();
 
@@ -231,6 +236,7 @@ router.post("/login", async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        twoFactorEnabled: user.twoFactorEnabled,
       },
     });
   } catch (err) {
@@ -247,19 +253,13 @@ router.post("/refresh", async (req, res) => {
     const token = req.cookies?.refreshToken;
     if (!token) return res.status(401).json({ msg: "No refresh token" });
 
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.REFRESH_SECRET);
-    } catch {
-      return res.status(401).json({ msg: "Invalid refresh token" });
-    }
+    const decoded = jwt.verify(token, process.env.REFRESH_SECRET);
 
     const user = await User.findById(decoded.id);
-    if (!user || !user.refreshTokens.includes(token)) {
+    if (!user || !user.refreshTokens.includes(token))
       return res.status(401).json({ msg: "Token revoked" });
-    }
 
-    user.refreshTokens = user.refreshTokens.filter(t => t !== token);
+    user.refreshTokens = user.refreshTokens.filter((t) => t !== token);
 
     const newRefresh = signRefreshToken({ id: user._id });
     user.refreshTokens.push(newRefresh);
@@ -272,12 +272,12 @@ router.post("/refresh", async (req, res) => {
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
-    const newAccessToken = signAccessToken({
-      id: user._id,
-      role: user.role,
+    res.json({
+      accessToken: signAccessToken({
+        id: user._id,
+        role: user.role,
+      }),
     });
-
-    res.json({ accessToken: newAccessToken });
   } catch (err) {
     console.error("Refresh error:", err);
     res.status(500).json({ msg: "Server error" });
@@ -293,12 +293,10 @@ router.post("/logout", async (req, res) => {
 
     if (token) {
       const decoded = jwt.decode(token);
-      if (decoded?.id) {
-        const user = await User.findById(decoded.id);
-        if (user) {
-          user.refreshTokens = user.refreshTokens.filter(t => t !== token);
-          await user.save();
-        }
+      const user = await User.findById(decoded?.id);
+      if (user) {
+        user.refreshTokens = user.refreshTokens.filter((t) => t !== token);
+        await user.save();
       }
     }
 
