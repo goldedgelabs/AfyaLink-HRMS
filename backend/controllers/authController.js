@@ -7,7 +7,7 @@ import { redis } from "../utils/redis.js";
 import { sendEmail } from "../utils/mailer.js";
 
 /* ======================================================
-   REGISTER (EMAIL VERIFICATION ENABLED)
+   REGISTER (EMAIL VERIFICATION)
 ====================================================== */
 export const register = async (req, res) => {
   try {
@@ -30,11 +30,10 @@ export const register = async (req, res) => {
       emailVerified: false,
     });
 
-    // 🔐 Email verification token
     const token = crypto.randomBytes(32).toString("hex");
 
     await redis.set(`verify:${token}`, user._id.toString(), {
-      ex: 60 * 60 * 24, // 24h
+      ex: 60 * 60 * 24,
     });
 
     const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
@@ -59,7 +58,7 @@ export const register = async (req, res) => {
 };
 
 /* ======================================================
-   LOGIN
+   LOGIN (2FA AWARE)
 ====================================================== */
 export const login = async (req, res) => {
   try {
@@ -81,24 +80,47 @@ export const login = async (req, res) => {
       return res.status(400).json({ msg: "Invalid credentials" });
     }
 
+    // 🔐 ENFORCE 2FA (NO SESSION ESCALATION)
+    if (user.twoFactorEnabled) {
+      const otp = crypto.randomInt(100000, 999999).toString();
+
+      await redis.set(`2fa:${user._id}`, otp, {
+        ex: 60 * 5,
+      });
+
+      await sendEmail({
+        to: user.email,
+        subject: "Your AfyaLink security code",
+        html: `
+          <h2>Security Verification</h2>
+          <p>Your one-time code is:</p>
+          <h1>${otp}</h1>
+          <p>This code expires in 5 minutes.</p>
+        `,
+      });
+
+      return res.json({
+        requires2FA: true,
+        message: "OTP sent to your email",
+      });
+    }
+
+    // ✅ Normal login (no 2FA)
     const accessToken = signAccessToken({
       id: user._id,
       role: user.role,
+      twoFactor: true,
     });
 
-    const refreshToken = signRefreshToken({
-      id: user._id,
-    });
+    const refreshToken = signRefreshToken({ id: user._id });
 
-    user.refreshTokens = user.refreshTokens || [];
     user.refreshTokens.push(refreshToken);
     await user.save();
 
-    // 🍪 Refresh token cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,          // REQUIRED on Render
-      sameSite: "none",      // REQUIRED cross-site
+      secure: true,
+      sameSite: "none",
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
@@ -113,6 +135,45 @@ export const login = async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+};
+
+/* ======================================================
+   VERIFY 2FA OTP → ISSUE FULL TOKEN
+====================================================== */
+export const verify2FAOtp = async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+
+    if (!userId || !otp) {
+      return res.status(400).json({ msg: "Missing data" });
+    }
+
+    const storedOtp = await redis.get(`2fa:${userId}`);
+    if (!storedOtp || storedOtp !== otp) {
+      return res.status(400).json({ msg: "Invalid or expired OTP" });
+    }
+
+    await redis.del(`2fa:${userId}`);
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    const accessToken = signAccessToken({
+      id: user._id,
+      role: user.role,
+      twoFactor: true,
+    });
+
+    res.json({
+      accessToken,
+      msg: "2FA verification successful",
+    });
+  } catch (err) {
+    console.error("Verify 2FA error:", err);
     res.status(500).json({ msg: "Server error" });
   }
 };
@@ -135,11 +196,10 @@ export const refresh = async (req, res) => {
     }
 
     const user = await User.findById(decoded.id);
-    if (!user || !user.refreshTokens?.includes(token)) {
-      return res.status(401).json({ msg: "Refresh token revoked" });
+    if (!user || !user.refreshTokens.includes(token)) {
+      return res.status(401).json({ msg: "Token revoked" });
     }
 
-    // 🔁 Rotate refresh token
     user.refreshTokens = user.refreshTokens.filter((t) => t !== token);
 
     const newRefreshToken = signRefreshToken({ id: user._id });
@@ -156,6 +216,7 @@ export const refresh = async (req, res) => {
     const newAccessToken = signAccessToken({
       id: user._id,
       role: user.role,
+      twoFactor: true,
     });
 
     res.json({ accessToken: newAccessToken });
@@ -197,133 +258,3 @@ export const logout = async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 };
-/* ======================================================
-   🔐 CHANGE PASSWORD (AUTH REQUIRED)
-   SAFE • ISOLATED • NO TOKEN TOUCH
-====================================================== */
-export const changePassword = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: "Missing fields" });
-    }
-
-    if (newPassword.length < 8) {
-      return res.status(400).json({
-        message: "Password must be at least 8 characters",
-      });
-    }
-
-    // 🔎 Explicitly select password
-    const user = await User.findById(userId).select("+password");
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const isMatch = await bcrypt.compare(
-      currentPassword,
-      user.password
-    );
-
-    if (!isMatch) {
-      return res
-        .status(401)
-        .json({ message: "Current password is incorrect" });
-    }
-
-    // 🔐 Re-hash new password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
-
-    await user.save();
-
-    return res.json({
-      message: "Password updated successfully",
-    });
-  } catch (err) {
-    console.error("Change password error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-/* ======================================================
-   SEND 2FA OTP (EMAIL)
-====================================================== */
-export const send2FAOtp = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ msg: "User not found" });
-    }
-
-    if (!user.twoFactorEnabled) {
-      return res.status(400).json({ msg: "2FA is not enabled" });
-    }
-
-    // 🔐 Generate 6-digit OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
-
-    // ⏱ Store OTP in Redis (5 minutes)
-    await redis.set(`2fa:${userId}`, otp, {
-      ex: 60 * 5,
-    });
-
-    // 📧 Send OTP email
-    await sendEmail({
-      to: user.email,
-      subject: "Your AfyaLink security code",
-      html: `
-        <h2>Security Verification</h2>
-        <p>Your one-time code is:</p>
-        <h1>${otp}</h1>
-        <p>This code expires in 5 minutes.</p>
-      `,
-    });
-
-    res.json({ msg: "OTP sent to your email" });
-  } catch (err) {
-    console.error("Send 2FA OTP error:", err);
-    res.status(500).json({ msg: "Server error" });
-  }
-};
-/* ======================================================
-   VERIFY 2FA OTP
-====================================================== */
-export const verify2FAOtp = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { otp } = req.body;
-
-    if (!otp) {
-      return res.status(400).json({ msg: "OTP required" });
-    }
-
-    const storedOtp = await redis.get(`2fa:${userId}`);
-    if (!storedOtp) {
-      return res.status(400).json({ msg: "OTP expired or invalid" });
-    }
-
-    if (storedOtp !== otp) {
-      return res.status(400).json({ msg: "Invalid OTP" });
-    }
-
-    // ✅ OTP verified → delete immediately
-    await redis.del(`2fa:${userId}`);
-
-    // 🔓 Mark session as 2FA verified (short-lived)
-    await redis.set(`2fa:verified:${userId}`, "true", {
-      ex: 60 * 10, // 10 minutes
-    });
-
-    res.json({ msg: "2FA verification successful" });
-  } catch (err) {
-    console.error("Verify 2FA OTP error:", err);
-    res.status(500).json({ msg: "Server error" });
-  }
-};
-
-
