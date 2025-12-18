@@ -22,7 +22,7 @@ export async function apiFetch(path, options = {}) {
     credentials: "include",
   });
 
-  // 🔁 Access token expired → try refresh
+  // 🔁 Access token expired → refresh
   if (res.status === 401) {
     const refresh = await fetch(base + "/api/auth/refresh", {
       method: "POST",
@@ -32,7 +32,7 @@ export async function apiFetch(path, options = {}) {
     if (!refresh.ok) {
       localStorage.clear();
       window.location.href = "/login";
-      return Promise.reject("Session expired");
+      throw new Error("Session expired");
     }
 
     const data = await refresh.json();
@@ -56,7 +56,6 @@ export async function apiFetch(path, options = {}) {
 /* ======================================================
    AUTH CONTEXT
 ====================================================== */
-
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -87,18 +86,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   /* --------------------------------------------------
-     LOGIN (email + password)
+     LOGIN
   -------------------------------------------------- */
   const login = async (email, password) => {
-    const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/auth/login`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      }
-    );
+    const res = await apiFetch("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
 
     if (!res.ok) {
       throw new Error("Invalid credentials");
@@ -124,8 +118,10 @@ export function AuthProvider({ children }) {
      GUEST LOGIN (frontend only)
   -------------------------------------------------- */
   const loginAsGuest = () => {
-    const guest = { role: "guest", name: "Demo User" };
-    setUser(guest);
+    setUser({
+      role: "guest",
+      name: "Demo User",
+    });
   };
 
   /* --------------------------------------------------
@@ -133,15 +129,9 @@ export function AuthProvider({ children }) {
   -------------------------------------------------- */
   const logout = async () => {
     try {
-      await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/logout`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-    } catch {
-      // ignore
+      await apiFetch("/api/auth/logout", {
+        method: "POST",
+      });
     } finally {
       localStorage.clear();
       setUser(null);
