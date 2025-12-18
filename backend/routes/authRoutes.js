@@ -6,7 +6,7 @@ import User from "../models/User.js";
 import { redis } from "../utils/redis.js";
 import { sendEmail } from "../utils/mailer.js";
 
-import { auth } from "../middleware/auth.js";
+import  auth  from "../middleware/auth.js";
 import {
   login,
   verify2FAOtp,
