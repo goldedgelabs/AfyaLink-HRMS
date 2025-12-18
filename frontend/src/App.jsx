@@ -21,6 +21,9 @@ import Unauthorized from "./pages/Unauthorized";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
+// 🔐 2FA
+import TwoFactorVerify from "./pages/TwoFactorVerify";
+
 // Dashboards
 import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
 import HospitalAdminDashboard from "./pages/HospitalAdmin/Dashboard";
@@ -123,6 +126,9 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
+
+        {/* 🔐 2FA (PUBLIC) */}
+        <Route path="/2fa" element={<TwoFactorVerify />} />
 
         {/* ---------------- GUEST / DEMO ---------------- */}
         <Route path="/guest" element={<GuestDashboard />} />
