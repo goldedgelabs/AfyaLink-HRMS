@@ -1,0 +1,86 @@
+name: Fix API Imports
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual run
+
+jobs:
+  replace-imports:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Replace api and pharmacyApi imports
+        run: |
+          files=(
+            "frontend/src/auth/useAuth.js"
+            "frontend/src/components/Notifications.jsx"
+            "frontend/src/pages/Admin/Beds.jsx"
+            "frontend/src/pages/Admin/ConnectorAnalytics.jsx"
+            "frontend/src/pages/Admin/ConnectorRetryPolicy.jsx"
+            "frontend/src/pages/Admin/DLQEditor.jsx"
+            "frontend/src/pages/Admin/DLQInspectEdit.jsx"
+            "frontend/src/pages/Admin/DLQInspector.jsx"
+            "frontend/src/pages/Admin/Integrations.jsx"
+            "frontend/src/pages/Admin/IntegrationsLogs.jsx"
+            "frontend/src/pages/Admin/MappingEditor.jsx"
+            "frontend/src/pages/Admin/PaymentSettings.jsx"
+            "frontend/src/pages/Admin/RealTimeIntegrations.jsx"
+            "frontend/src/pages/Admin/TransactionsDashboard.jsx"
+            "frontend/src/pages/Doctor/Appointments.jsx"
+            "frontend/src/pages/HospitalAdmin/Branches.jsx"
+            "frontend/src/pages/HospitalAdmin/Financials.jsx"
+            "frontend/src/pages/HospitalAdmin/Patients.jsx"
+            "frontend/src/pages/HospitalAdmin/Pharmacy.jsx"
+            "frontend/src/pages/LabTech/LabTests.jsx"
+            "frontend/src/pages/Patient/Payments.jsx"
+            "frontend/src/pages/Payments/CheckoutStripe.jsx"
+            "frontend/src/pages/Payments/PaymentsFull.jsx"
+            "frontend/src/pages/SuperAdmin/ML.jsx"
+            "frontend/src/pages/SuperAdmin/RBAC.jsx"
+            "frontend/src/pages/Dashboard.jsx"
+            "frontend/src/pages/DoctorDashboard.jsx"
+            "frontend/src/pages/HospitalAdminDashboard.jsx"
+            "frontend/src/pages/LabTechDashboard.jsx"
+            "frontend/src/pages/NurseDashboard.jsx"
+            "frontend/src/pages/PatientDashboard.jsx"
+            "frontend/src/pages/Profile.jsx"
+            "frontend/src/pages/ProfileSecurity.jsx"
+            "frontend/src/pages/SuperAdminDashboard.jsx"
+            "frontend/src/pages/TwoFactor.jsx"
+            "frontend/src/pages/TwoFactorVerify.jsx"
+            "frontend/src/services/aiClient.js"
+            "frontend/src/services/idbPharmacy.js"
+            "frontend/src/utils/auth.jsx"
+          )
+
+          for file in "${files[@]}"; do
+            if [ -f "$file" ]; then
+              sed -i "s|from ['\"].*\(api\|pharmacyApi\)['\"]|from './utils/apiFetch'|" "$file"
+              echo "Updated imports in $file"
+            else
+              echo "File not found: $file"
+            fi
+          done
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Fix api and pharmacyApi imports to apiFetch" || echo "No changes to commit"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
