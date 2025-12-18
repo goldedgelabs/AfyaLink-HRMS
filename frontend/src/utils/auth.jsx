@@ -4,54 +4,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-
-/* ======================================================
-   API FETCH (JWT + SILENT REFRESH)
-====================================================== */
-export async function apiFetch(path, options = {}) {
-  const base = import.meta.env.VITE_API_URL;
-  let token = localStorage.getItem("token");
-
-  let res = await fetch(base + path, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-    credentials: "include",
-  });
-
-  // 🔁 Access token expired → refresh
-  if (res.status === 401) {
-    const refresh = await fetch(base + "/api/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-    });
-
-    if (!refresh.ok) {
-      localStorage.clear();
-      window.location.href = "/login";
-      throw new Error("Session expired");
-    }
-
-    const data = await refresh.json();
-    localStorage.setItem("token", data.token);
-
-    // retry original request
-    res = await fetch(base + path, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${data.token}`,
-        ...(options.headers || {}),
-      },
-      credentials: "include",
-    });
-  }
-
-  return res;
-}
+import { apiFetch, logout as apiLogout } from "./apiFetch";
 
 /* ======================================================
    AUTH CONTEXT
@@ -63,7 +16,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* --------------------------------------------------
-     Restore auth on refresh
+     Restore session on reload
   -------------------------------------------------- */
   useEffect(() => {
     try {
@@ -72,7 +25,7 @@ export function AuthProvider({ children }) {
 
       if (storedUser && token) {
         const parsed = JSON.parse(storedUser);
-        if (parsed?.role && parsed?.email) {
+        if (parsed?.id && parsed?.role) {
           setUser(parsed);
         } else {
           localStorage.clear();
@@ -87,6 +40,7 @@ export function AuthProvider({ children }) {
 
   /* --------------------------------------------------
      LOGIN
+     (handles both normal + 2FA-required users)
   -------------------------------------------------- */
   const login = async (email, password) => {
     const res = await apiFetch("/api/auth/login", {
@@ -94,12 +48,18 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password }),
     });
 
-    if (!res.ok) {
-      throw new Error("Invalid credentials");
-    }
-
     const data = await res.json();
 
+    if (!res.ok) {
+      throw new Error(data.msg || "Login failed");
+    }
+
+    // 🔐 2FA REQUIRED → frontend will redirect
+    if (data.requires2FA) {
+      return { requires2FA: true };
+    }
+
+    // ✅ Normal login
     const safeUser = {
       id: data.user.id,
       name: data.user.name,
@@ -107,21 +67,24 @@ export function AuthProvider({ children }) {
       role: data.user.role,
     };
 
-    setUser(safeUser);
+    localStorage.setItem("token", data.accessToken);
     localStorage.setItem("user", JSON.stringify(safeUser));
-    localStorage.setItem("token", data.token);
+    setUser(safeUser);
 
-    return safeUser;
+    return { user: safeUser };
   };
 
   /* --------------------------------------------------
-     GUEST LOGIN (frontend only)
+     COMPLETE 2FA (after OTP verification)
   -------------------------------------------------- */
-  const loginAsGuest = () => {
-    setUser({
-      role: "guest",
-      name: "Demo User",
-    });
+  const complete2FA = (accessToken) => {
+    localStorage.setItem("token", accessToken);
+
+    // user already exists from initial login
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
   };
 
   /* --------------------------------------------------
@@ -129,13 +92,11 @@ export function AuthProvider({ children }) {
   -------------------------------------------------- */
   const logout = async () => {
     try {
-      await apiFetch("/api/auth/logout", {
-        method: "POST",
-      });
+      await apiFetch("/api/auth/logout", { method: "POST" });
     } finally {
       localStorage.clear();
       setUser(null);
-      window.location.href = "/login";
+      apiLogout(); // safe redirect helper
     }
   };
 
@@ -147,7 +108,7 @@ export function AuthProvider({ children }) {
         isAuthenticated: Boolean(user),
         role: user?.role,
         login,
-        loginAsGuest,
+        complete2FA,
         logout,
       }}
     >
