@@ -1,18 +1,17 @@
 import express from "express";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 import User from "../models/User.js";
-import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { redis } from "../utils/redis.js";
 import { sendEmail } from "../utils/mailer.js";
 
 import { auth } from "../middleware/auth.js";
 import {
-  changePassword,
-  send2FAOtp,
+  login,
   verify2FAOtp,
+  resend2FA,
+  changePassword,
 } from "../controllers/authController.js";
 
 const router = express.Router();
@@ -188,62 +187,19 @@ router.post("/reset-password", async (req, res) => {
 router.post("/change-password", auth, changePassword);
 
 /* ======================================================
-   2FA — SEND OTP (EMAIL)
+   LOGIN (2FA + TRUSTED DEVICES)
 ====================================================== */
-router.post("/2fa/send", auth, send2FAOtp);
+router.post("/login", login);
 
 /* ======================================================
-   2FA — VERIFY OTP
+   2FA — VERIFY OTP (PUBLIC)
 ====================================================== */
-router.post("/2fa/verify", auth, verify2FAOtp);
+router.post("/2fa/verify", verify2FAOtp);
 
 /* ======================================================
-   LOGIN
+   2FA — RESEND OTP (RATE LIMITED)
 ====================================================== */
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: "Invalid credentials" });
-    if (!user.emailVerified)
-      return res.status(403).json({ msg: "Verify your email first" });
-
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(400).json({ msg: "Invalid credentials" });
-
-    const accessToken = signAccessToken({
-      id: user._id,
-      role: user.role,
-    });
-
-    const refreshToken = signRefreshToken({ id: user._id });
-
-    user.refreshTokens.push(refreshToken);
-    await user.save();
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 14 * 24 * 60 * 60 * 1000,
-    });
-
-    res.json({
-      accessToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        twoFactorEnabled: user.twoFactorEnabled,
-      },
-    });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ msg: "Server error" });
-  }
-});
+router.post("/2fa/resend", resend2FA);
 
 /* ======================================================
    REFRESH TOKEN
@@ -261,7 +217,12 @@ router.post("/refresh", async (req, res) => {
 
     user.refreshTokens = user.refreshTokens.filter((t) => t !== token);
 
-    const newRefresh = signRefreshToken({ id: user._id });
+    const newRefresh = jwt.sign(
+      { id: user._id },
+      process.env.REFRESH_SECRET,
+      { expiresIn: "14d" }
+    );
+
     user.refreshTokens.push(newRefresh);
     await user.save();
 
@@ -273,10 +234,15 @@ router.post("/refresh", async (req, res) => {
     });
 
     res.json({
-      accessToken: signAccessToken({
-        id: user._id,
-        role: user.role,
-      }),
+      accessToken: jwt.sign(
+        {
+          id: user._id,
+          role: user.role,
+          twoFactorVerified: true,
+        },
+        process.env.ACCESS_SECRET,
+        { expiresIn: "15m" }
+      ),
     });
   } catch (err) {
     console.error("Refresh error:", err);
