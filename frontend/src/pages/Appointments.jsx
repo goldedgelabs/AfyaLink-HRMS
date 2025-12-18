@@ -1,62 +1,73 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { apiFetch } from "../utils/auth";
 
-export default function Appointments({ api, token }) {
+export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
-  const [form, setForm] = useState({ patient: "", doctor: "", date: "", reason: "" });
+  const [form, setForm] = useState({
+    patient: "",
+    doctor: "",
+    date: "",
+    reason: "",
+  });
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  const auth = { headers: { Authorization: `Bearer ${token}` } };
-
   useEffect(() => {
-    loadAppointments();
-    loadPatients();
-    loadDoctors();
+    loadAll();
   }, []);
 
-  const loadAppointments = async () => {
+  const loadAll = async () => {
     setLoading(true);
     setErr("");
     try {
-      const res = await axios.get(`${api}/appointments`, auth);
-      setAppointments(res.data);
-    } catch (e) {
-      setErr("Failed to load appointments");
+      const [aRes, pRes, uRes] = await Promise.all([
+        apiFetch("/api/appointments"),
+        apiFetch("/api/patients"),
+        apiFetch("/api/auth/users"),
+      ]);
+
+      if (!aRes.ok || !pRes.ok || !uRes.ok) {
+        throw new Error();
+      }
+
+      const appointmentsData = await aRes.json();
+      const patientsData = await pRes.json();
+      const usersData = await uRes.json();
+
+      setAppointments(appointmentsData);
+      setPatients(patientsData);
+      setDoctors(usersData.filter((u) => u.role === "doctor"));
+    } catch {
+      setErr("Failed to load data");
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPatients = async () => {
-    try {
-      const res = await axios.get(`${api}/patients`, auth);
-      setPatients(res.data);
-    } catch {}
-  };
-
-  const loadDoctors = async () => {
-    try {
-      const res = await axios.get(`${api}/auth/users`, auth);
-      setDoctors(res.data.filter((u) => u.role === "doctor"));
-    } catch {}
-  };
-
   const submit = async (e) => {
     e.preventDefault();
+    setErr("");
+
     try {
-      if (editing) {
-        await axios.put(`${api}/appointments/${editing}`, form, auth);
-      } else {
-        await axios.post(`${api}/appointments`, form, auth);
-      }
+      const res = editing
+        ? await apiFetch(`/api/appointments/${editing}`, {
+            method: "PUT",
+            body: JSON.stringify(form),
+          })
+        : await apiFetch("/api/appointments", {
+            method: "POST",
+            body: JSON.stringify(form),
+          });
+
+      if (!res.ok) throw new Error();
+
       setForm({ patient: "", doctor: "", date: "", reason: "" });
       setEditing(null);
-      loadAppointments();
-    } catch (e) {
+      loadAll();
+    } catch {
       setErr("Failed to save appointment");
     }
   };
@@ -67,7 +78,7 @@ export default function Appointments({ api, token }) {
       patient: a.patient?._id || "",
       doctor: a.doctor?._id || "",
       date: a.date?.substring(0, 16) || "",
-      reason: a.reason || ""
+      reason: a.reason || "",
     });
   };
 
@@ -77,7 +88,7 @@ export default function Appointments({ api, token }) {
 
       {err && <div style={{ color: "red", marginBottom: 12 }}>{err}</div>}
 
-      {/* ===== APPOINTMENT FORM ===== */}
+      {/* ===== FORM ===== */}
       <form onSubmit={submit} className="card appointment-form">
         <h3>{editing ? "Update Appointment" : "Create Appointment"}</h3>
 
@@ -89,7 +100,9 @@ export default function Appointments({ api, token }) {
         >
           <option value="">-- Select Patient --</option>
           {patients.map((p) => (
-            <option key={p._id} value={p._id}>{p.name}</option>
+            <option key={p._id} value={p._id}>
+              {p.name}
+            </option>
           ))}
         </select>
 
@@ -101,7 +114,9 @@ export default function Appointments({ api, token }) {
         >
           <option value="">-- Select Doctor --</option>
           {doctors.map((d) => (
-            <option key={d._id} value={d._id}>{d.name}</option>
+            <option key={d._id} value={d._id}>
+              {d.name}
+            </option>
           ))}
         </select>
 
@@ -121,7 +136,7 @@ export default function Appointments({ api, token }) {
         />
 
         <div className="form-buttons">
-          <button className="button gradient-blue" type="submit" aria-label={editing ? "Update appointment" : "Create appointment"}>
+          <button className="button gradient-blue" type="submit">
             {editing ? "Update" : "Create"}
           </button>
 
@@ -131,9 +146,13 @@ export default function Appointments({ api, token }) {
               type="button"
               onClick={() => {
                 setEditing(null);
-                setForm({ patient: "", doctor: "", date: "", reason: "" });
+                setForm({
+                  patient: "",
+                  doctor: "",
+                  date: "",
+                  reason: "",
+                });
               }}
-              aria-label="Cancel edit appointment"
             >
               Cancel
             </button>
@@ -141,9 +160,11 @@ export default function Appointments({ api, token }) {
         </div>
       </form>
 
-      {/* ===== APPOINTMENT LIST ===== */}
+      {/* ===== LIST ===== */}
       {loading ? (
-        <div className="premium-card" style={{ textAlign: "center" }}>Loading...</div>
+        <div className="premium-card" style={{ textAlign: "center" }}>
+          Loading...
+        </div>
       ) : (
         <table className="table premium-table">
           <thead>
@@ -156,108 +177,33 @@ export default function Appointments({ api, token }) {
             </tr>
           </thead>
           <tbody>
-            {appointments.length > 0 ? appointments.map((a) => (
-              <tr key={a._id}>
-                <td>{a.patient?.name}</td>
-                <td>{a.doctor?.name}</td>
-                <td>{new Date(a.date).toLocaleString()}</td>
-                <td>{a.reason}</td>
-                <td>
-                  <button
-                    className="button gradient-purple"
-                    onClick={() => startEdit(a)}
-                    aria-label={`Edit appointment for ${a.patient?.name}`}
-                  >
-                    ✏️
-                  </button>
-                </td>
-              </tr>
-            )) : (
+            {appointments.length > 0 ? (
+              appointments.map((a) => (
+                <tr key={a._id}>
+                  <td>{a.patient?.name}</td>
+                  <td>{a.doctor?.name}</td>
+                  <td>{new Date(a.date).toLocaleString()}</td>
+                  <td>{a.reason}</td>
+                  <td>
+                    <button
+                      className="button gradient-purple"
+                      onClick={() => startEdit(a)}
+                    >
+                      ✏️
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
               <tr>
-                <td colSpan="5" style={{ textAlign: "center" }}>No appointments found.</td>
+                <td colSpan="5" style={{ textAlign: "center" }}>
+                  No appointments found.
+                </td>
               </tr>
             )}
           </tbody>
         </table>
       )}
-
-      <style>{`
-        .premium-card {
-          background: rgba(255,255,255,0.7);
-          backdrop-filter: blur(12px);
-          padding: 24px;
-          border-radius: 16px;
-          box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-          margin-bottom: 24px;
-        }
-
-        .appointment-form label {
-          display: block;
-          margin-top: 10px;
-          margin-bottom: 4px;
-          font-weight: 500;
-        }
-
-        .appointment-form input,
-        .appointment-form select {
-          width: 100%;
-          padding: 8px 10px;
-          border-radius: 8px;
-          border: 1px solid #ccc;
-          margin-bottom: 10px;
-        }
-
-        .form-buttons {
-          display: flex;
-          gap: 10px;
-          margin-top: 12px;
-        }
-
-        .cancel-btn {
-          background: #aaa;
-          color: white;
-        }
-
-        .table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-
-        .table th, .table td {
-          padding: 12px 8px;
-          text-align: left;
-        }
-
-        .table th {
-          background: linear-gradient(135deg, #4f46e5, #06b6d4);
-          color: #fff;
-        }
-
-        .table tr {
-          transition: transform 0.2s, background 0.2s;
-        }
-
-        .table tr:hover {
-          background: rgba(59, 130, 246, 0.1);
-        }
-
-        .gradient-blue { background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; }
-        .gradient-purple { background: linear-gradient(135deg, #a855f7, #6d28d9); color: white; }
-
-        .button {
-          padding: 8px 16px;
-          border-radius: 8px;
-          border: none;
-          cursor: pointer;
-          font-weight: 600;
-          transition: 0.3s;
-        }
-
-        .button:hover {
-          transform: translateY(-2px);
-        }
-      `}</style>
     </div>
   );
-                }
+}
