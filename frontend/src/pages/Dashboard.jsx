@@ -1,41 +1,56 @@
 import React, { useEffect, useState } from "react";
+import { apiFetch } from "../../utils/apiFetch";
 
-export default function DoctorDashboard({ api, token }) {
-  const [stats, setStats] = useState({ patients: 0, appointments: 0, labRequests: 0 });
+export default function DoctorDashboard() {
+  const [stats, setStats] = useState({
+    patients: 0,
+    appointments: 0,
+    labRequests: 0,
+  });
+
   const [recentPatients, setRecentPatients] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchStats();
-    fetchRecentPatients();
+    loadDashboard();
   }, []);
 
-  const fetchStats = async () => {
+  const loadDashboard = async () => {
     try {
-      const res = await fetch(`${api}/doctor/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setStats(data);
+      await Promise.all([fetchStats(), fetchRecentPatients()]);
     } catch (err) {
+      setError("Failed to load dashboard data");
       console.error(err);
     }
   };
 
-  const fetchRecentPatients = async () => {
-    try {
-      const res = await fetch(`${api}/doctor/recent-patients`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setRecentPatients(data);
-    } catch (err) {
-      console.error(err);
+  const fetchStats = async () => {
+    const res = await apiFetch("/api/doctor/stats");
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch stats");
     }
+
+    const data = await res.json();
+    setStats(data);
+  };
+
+  const fetchRecentPatients = async () => {
+    const res = await apiFetch("/api/doctor/recent-patients");
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch patients");
+    }
+
+    const data = await res.json();
+    setRecentPatients(data);
   };
 
   return (
     <div>
       <h1>👨‍⚕️ Doctor Dashboard</h1>
+
+      {error && <div className="auth-error">{error}</div>}
 
       {/* Stats cards */}
       <div style={styles.statsContainer}>
@@ -55,19 +70,21 @@ export default function DoctorDashboard({ api, token }) {
       <table style={styles.table}>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Age</th>
-            <th>Last Visit</th>
-            <th>Status</th>
+            <th style={styles.th}>Name</th>
+            <th style={styles.th}>Age</th>
+            <th style={styles.th}>Last Visit</th>
+            <th style={styles.th}>Status</th>
           </tr>
         </thead>
         <tbody>
           {recentPatients.map((p) => (
-            <tr key={p.id}>
-              <td>{p.name}</td>
-              <td>{p.age}</td>
-              <td>{new Date(p.lastVisit).toLocaleDateString()}</td>
-              <td>{p.status}</td>
+            <tr key={p._id || p.id}>
+              <td style={styles.td}>{p.name}</td>
+              <td style={styles.td}>{p.age}</td>
+              <td style={styles.td}>
+                {new Date(p.lastVisit).toLocaleDateString()}
+              </td>
+              <td style={styles.td}>{p.status}</td>
             </tr>
           ))}
         </tbody>
@@ -97,6 +114,13 @@ const styles = {
     width: "100%",
     borderCollapse: "collapse",
   },
-  th: { textAlign: "left", borderBottom: "2px solid #ddd", padding: "8px" },
-  td: { padding: "8px", borderBottom: "1px solid #eee" },
+  th: {
+    textAlign: "left",
+    borderBottom: "2px solid #ddd",
+    padding: "8px",
+  },
+  td: {
+    padding: "8px",
+    borderBottom: "1px solid #eee",
+  },
 };
