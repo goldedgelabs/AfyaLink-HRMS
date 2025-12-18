@@ -283,42 +283,6 @@ router.post("/refresh", async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 });
-/* ======================================================
-   VERIFY 2FA OTP
-====================================================== */
-export const verify2FAOtp = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { otp } = req.body;
-
-    if (!otp) {
-      return res.status(400).json({ msg: "OTP required" });
-    }
-
-    const storedOtp = await redis.get(`2fa:${userId}`);
-    if (!storedOtp) {
-      return res.status(400).json({ msg: "OTP expired or invalid" });
-    }
-
-    if (storedOtp !== otp) {
-      return res.status(400).json({ msg: "Invalid OTP" });
-    }
-
-    // ✅ OTP verified → delete immediately
-    await redis.del(`2fa:${userId}`);
-
-    // 🔓 Mark session as 2FA verified (short-lived)
-    await redis.set(`2fa:verified:${userId}`, "true", {
-      ex: 60 * 10, // 10 minutes
-    });
-
-    res.json({ msg: "2FA verification successful" });
-  } catch (err) {
-    console.error("Verify 2FA OTP error:", err);
-    res.status(500).json({ msg: "Server error" });
-  }
-};
-
 
 /* ======================================================
    LOGOUT
