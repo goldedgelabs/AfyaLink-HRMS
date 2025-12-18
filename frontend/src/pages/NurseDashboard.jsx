@@ -1,51 +1,53 @@
 import React, { useEffect, useState } from "react";
+import { apiFetch } from "../../utils/apiFetch";
 
-export default function NurseDashboard({ api, token }) {
+export default function NurseDashboard() {
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  /* --------------------------------------------------
+     LOAD ALL DATA
+  -------------------------------------------------- */
+  const loadAll = async () => {
+    setLoading(true);
+    setErr("");
+
+    try {
+      const [patientsRes, apptsRes, tasksRes] = await Promise.all([
+        apiFetch("/api/nurse/patients"),
+        apiFetch("/api/nurse/appointments"),
+        apiFetch("/api/nurse/tasks"),
+      ]);
+
+      if (!patientsRes.ok || !apptsRes.ok || !tasksRes.ok) {
+        throw new Error("Failed to load nurse data");
+      }
+
+      const [patientsData, apptsData, tasksData] = await Promise.all([
+        patientsRes.json(),
+        apptsRes.json(),
+        tasksRes.json(),
+      ]);
+
+      setPatients(patientsData);
+      setAppointments(apptsData);
+      setTasks(tasksData);
+    } catch (e) {
+      setErr(e.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchPatients();
-    fetchAppointments();
-    fetchTasks();
+    loadAll();
   }, []);
 
-  const fetchPatients = async () => {
-    try {
-      const res = await fetch(`${api}/nurse/patients`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setPatients(data);
-    } catch (err) {
-      console.error("Error fetching patients:", err);
-    }
-  };
-
-  const fetchAppointments = async () => {
-    try {
-      const res = await fetch(`${api}/nurse/appointments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setAppointments(data);
-    } catch (err) {
-      console.error("Error fetching appointments:", err);
-    }
-  };
-
-  const fetchTasks = async () => {
-    try {
-      const res = await fetch(`${api}/nurse/tasks`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setTasks(data);
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-    }
-  };
+  if (loading) return <p>Loading nurse dashboard...</p>;
+  if (err) return <p style={{ color: "red" }}>{err}</p>;
 
   return (
     <div>
@@ -63,12 +65,12 @@ export default function NurseDashboard({ api, token }) {
                 <th>Name</th>
                 <th>Age</th>
                 <th>Gender</th>
-                <th>Ward/Room</th>
+                <th>Ward / Room</th>
               </tr>
             </thead>
             <tbody>
               {patients.map((p) => (
-                <tr key={p.id}>
+                <tr key={p._id || p.id}>
                   <td>{p.name}</td>
                   <td>{p.age}</td>
                   <td>{p.gender}</td>
@@ -80,7 +82,7 @@ export default function NurseDashboard({ api, token }) {
         )}
       </section>
 
-      {/* Appointments Support */}
+      {/* Appointments */}
       <section style={styles.section}>
         <h2>📅 Upcoming Appointments ({appointments.length})</h2>
         {appointments.length === 0 ? (
@@ -97,7 +99,7 @@ export default function NurseDashboard({ api, token }) {
             </thead>
             <tbody>
               {appointments.map((appt) => (
-                <tr key={appt.id}>
+                <tr key={appt._id || appt.id}>
                   <td>{new Date(appt.date).toLocaleDateString()}</td>
                   <td>{appt.patientName}</td>
                   <td>{appt.doctorName}</td>
@@ -109,7 +111,7 @@ export default function NurseDashboard({ api, token }) {
         )}
       </section>
 
-      {/* Medical Tasks */}
+      {/* Tasks */}
       <section style={styles.section}>
         <h2>📝 Tasks & Records ({tasks.length})</h2>
         {tasks.length === 0 ? (
@@ -117,8 +119,9 @@ export default function NurseDashboard({ api, token }) {
         ) : (
           <ul>
             {tasks.map((t) => (
-              <li key={t.id}>
-                {t.date} - {t.patientName}: {t.description}
+              <li key={t._id || t.id}>
+                {new Date(t.date).toLocaleDateString()} —{" "}
+                <strong>{t.patientName}</strong>: {t.description}
               </li>
             ))}
           </ul>
@@ -130,5 +133,9 @@ export default function NurseDashboard({ api, token }) {
 
 const styles = {
   section: { marginBottom: "30px" },
-  table: { width: "100%", borderCollapse: "collapse", marginTop: "10px" },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: "10px",
+  },
 };
