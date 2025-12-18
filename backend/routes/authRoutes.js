@@ -7,6 +7,10 @@ import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { redis } from "../utils/redis.js";
 import { sendEmail } from "../utils/mailer.js";
 
+// ✅ ADD THESE TWO IMPORTS
+import { changePassword } from "../controllers/authController.js";
+import { auth } from "../middleware/auth.js";
+
 const router = express.Router();
 
 /* ======================================================
@@ -127,7 +131,11 @@ router.post("/forgot-password", async (req, res) => {
     if (!email) return res.status(400).json({ msg: "Email required" });
 
     const user = await User.findOne({ email });
-    if (!user) return res.json({ msg: "If the email exists, a reset link was sent" });
+    if (!user) {
+      return res.json({
+        msg: "If the email exists, a reset link was sent",
+      });
+    }
 
     const token = crypto.randomBytes(32).toString("hex");
     await redis.set(`reset:${token}`, user._id.toString(), {
@@ -155,7 +163,9 @@ router.post("/forgot-password", async (req, res) => {
 router.post("/reset-password", async (req, res) => {
   try {
     const { token, password } = req.body;
-    if (!token || !password) return res.status(400).json({ msg: "Invalid request" });
+    if (!token || !password) {
+      return res.status(400).json({ msg: "Invalid request" });
+    }
 
     const userId = await redis.get(`reset:${token}`);
     if (!userId) return res.status(400).json({ msg: "Token expired" });
@@ -175,6 +185,11 @@ router.post("/reset-password", async (req, res) => {
 });
 
 /* ======================================================
+   🔐 CHANGE PASSWORD (AUTH REQUIRED)  ✅ NEW
+====================================================== */
+router.post("/change-password", auth, changePassword);
+
+/* ======================================================
    LOGIN
 ====================================================== */
 router.post("/login", async (req, res) => {
@@ -183,6 +198,7 @@ router.post("/login", async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "Invalid credentials" });
+
     if (!user.emailVerified) {
       return res.status(403).json({ msg: "Verify your email first" });
     }
@@ -190,7 +206,11 @@ router.post("/login", async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ msg: "Invalid credentials" });
 
-    const accessToken = signAccessToken({ id: user._id, role: user.role });
+    const accessToken = signAccessToken({
+      id: user._id,
+      role: user.role,
+    });
+
     const refreshToken = signRefreshToken({ id: user._id });
 
     user.refreshTokens = user.refreshTokens || [];
@@ -220,7 +240,7 @@ router.post("/login", async (req, res) => {
 });
 
 /* ======================================================
-   REFRESH TOKEN (SILENT REFRESH)
+   REFRESH TOKEN
 ====================================================== */
 router.post("/refresh", async (req, res) => {
   try {
