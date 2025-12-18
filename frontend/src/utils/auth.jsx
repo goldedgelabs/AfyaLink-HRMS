@@ -7,7 +7,7 @@ import {
 import { apiFetch, logout as apiLogout } from "./apiFetch";
 
 /* ======================================================
-   JWT PARSER (2FA FLAG)
+   JWT PARSER
 ====================================================== */
 function parseJwt(token) {
   try {
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* --------------------------------------------------
-     Restore session on reload (WITH 2FA STATE)
+     Restore session (reload-safe + 2FA aware)
   -------------------------------------------------- */
   useEffect(() => {
     try {
@@ -36,11 +36,10 @@ export function AuthProvider({ children }) {
       const token = localStorage.getItem("token");
 
       if (storedUser && token) {
-        const parsedUser = JSON.parse(storedUser);
         const decoded = parseJwt(token);
 
         setUser({
-          ...parsedUser,
+          ...JSON.parse(storedUser),
           twoFactorVerified: decoded?.twoFactor !== false,
         });
       }
@@ -52,8 +51,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   /* --------------------------------------------------
-     LOGIN
-     (normal + 2FA-required users)
+     LOGIN (2FA AWARE)
   -------------------------------------------------- */
   const login = async (email, password) => {
     const res = await apiFetch("/api/auth/login", {
@@ -67,13 +65,18 @@ export function AuthProvider({ children }) {
       throw new Error(data.msg || "Login failed");
     }
 
-    // 🔐 2FA REQUIRED → stop here
+    /* 🔐 2FA REQUIRED */
     if (data.requires2FA) {
       localStorage.setItem("2fa_pending", "true");
-      return { requires2FA: true };
+      localStorage.setItem("2fa_user", data.userId);
+
+      return {
+        requires2FA: true,
+        userId: data.userId,
+      };
     }
 
-    // ✅ Normal login
+    /* ✅ NORMAL LOGIN */
     const safeUser = {
       id: data.user.id,
       name: data.user.name,
@@ -95,12 +98,12 @@ export function AuthProvider({ children }) {
   };
 
   /* --------------------------------------------------
-     COMPLETE 2FA (after OTP verify)
-     🔓 Unlocks dashboard automatically
+     COMPLETE 2FA (OTP VERIFIED)
   -------------------------------------------------- */
   const complete2FA = (accessToken) => {
     localStorage.setItem("token", accessToken);
     localStorage.removeItem("2fa_pending");
+    localStorage.removeItem("2fa_user");
 
     const storedUser = localStorage.getItem("user");
     const decoded = parseJwt(accessToken);
