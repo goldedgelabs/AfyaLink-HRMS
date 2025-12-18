@@ -45,7 +45,7 @@ export const enable2FA = async (req, res) => {
 
     const secret = speakeasy.generateSecret({ length: 20 });
     user.twoFactorSecret = secret.base32;
-    user.is2FAEnabled = true;
+    user.twoFactorEnabled = true;
 
     await user.save();
     res.json({ message: "2FA enabled", secret: secret.otpauth_url });
@@ -55,18 +55,27 @@ export const enable2FA = async (req, res) => {
 };
 
 // ==========================
-// DISABLE 2FA (WITH PASSWORD CHECK)
+// DISABLE 2FA (WITH PASSWORD CHECK + ADMIN OVERRIDE)
 // ==========================
 export const disable2FA = async (req, res) => {
   try {
-    const { password } = req.body;
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const { password, userId } = req.body;
+    let user;
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Incorrect password" });
+    // Admin override
+    if (userId && req.user.role === "SuperAdmin") {
+      user = await User.findById(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+    } else {
+      // Regular user disabling own 2FA
+      user = await User.findById(req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.is2FAEnabled = false;
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) return res.status(400).json({ message: "Incorrect password" });
+    }
+
+    user.twoFactorEnabled = false;
     user.twoFactorSecret = null;
 
     await user.save();
@@ -77,7 +86,7 @@ export const disable2FA = async (req, res) => {
 };
 
 // ==========================
-// ACCOUNT SETTINGS (CHANGE PASSWORD)
+// CHANGE PASSWORD
 // ==========================
 export const changePassword = async (req, res) => {
   try {
@@ -99,7 +108,7 @@ export const changePassword = async (req, res) => {
 };
 
 // ==========================
-// SECURITY SETTINGS (EXAMPLE: TOGGLE NOTIFICATIONS)
+// UPDATE SECURITY SETTINGS
 // ==========================
 export const updateSecuritySettings = async (req, res) => {
   try {
@@ -107,10 +116,10 @@ export const updateSecuritySettings = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (notifyOnLogin !== undefined) user.notifyOnLogin = notifyOnLogin;
+    if (notifyOnLogin !== undefined) user.metadata.notifyOnLogin = notifyOnLogin;
 
     await user.save();
-    res.json({ message: "Security settings updated", settings: { notifyOnLogin: user.notifyOnLogin } });
+    res.json({ message: "Security settings updated", settings: { notifyOnLogin } });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
