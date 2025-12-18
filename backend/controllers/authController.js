@@ -248,4 +248,46 @@ export const changePassword = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+/* ======================================================
+   SEND 2FA OTP (EMAIL)
+====================================================== */
+export const send2FAOtp = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({ msg: "2FA is not enabled" });
+    }
+
+    // 🔐 Generate 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+
+    // ⏱ Store OTP in Redis (5 minutes)
+    await redis.set(`2fa:${userId}`, otp, {
+      ex: 60 * 5,
+    });
+
+    // 📧 Send OTP email
+    await sendEmail({
+      to: user.email,
+      subject: "Your AfyaLink security code",
+      html: `
+        <h2>Security Verification</h2>
+        <p>Your one-time code is:</p>
+        <h1>${otp}</h1>
+        <p>This code expires in 5 minutes.</p>
+      `,
+    });
+
+    res.json({ msg: "OTP sent to your email" });
+  } catch (err) {
+    console.error("Send 2FA OTP error:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+};
 
