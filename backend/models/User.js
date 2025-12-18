@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 
 const { Schema, model } = mongoose;
 
+/* ======================================================
+   USER SCHEMA
+====================================================== */
 const userSchema = new Schema(
   {
     name: { type: String, required: true },
@@ -45,27 +48,49 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+
+    /* ==================================================
+       🔐 TRUSTED DEVICES (STEP 1)
+       - deviceId is hashed
+       - lastUsed used later for expiry (Step 2)
+    =================================================== */
+    trustedDevices: [
+      {
+        deviceId: { type: String, required: true }, // hashed
+        userAgent: { type: String },
+        lastUsed: { type: Date, default: Date.now },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-// 🔐 Hash password before save
+/* ======================================================
+   PASSWORD HASH
+====================================================== */
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
+
   if (this.password) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   }
+
   next();
 });
 
-// 🔐 Compare password
+/* ======================================================
+   PASSWORD COMPARE
+====================================================== */
 userSchema.methods.matchPassword = async function (entered) {
   if (!this.password) return false;
   return bcrypt.compare(entered, this.password);
 };
 
-// 🔁 Prevent multiple model compilation in hot reload
+/* ======================================================
+   MODEL EXPORT (HOT-RELOAD SAFE)
+====================================================== */
 const User = mongoose.models.User || model("User", userSchema);
 
 export default User;
