@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { apiFetch } from "../utils/auth";
+import { apiFetch } from "../utils/apiFetch";
 import PasswordInput from "../components/PasswordInput";
 
 export default function ResetPassword() {
