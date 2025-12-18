@@ -1,65 +1,61 @@
 import React, { useEffect, useState } from "react";
+import { apiFetch } from "../../utils/apiFetch";
 
-export default function DoctorDashboard({ api, token }) {
+export default function DoctorDashboard() {
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [labRequests, setLabRequests] = useState([]);
   const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPatients();
-    fetchAppointments();
-    fetchLabRequests();
-    fetchReports();
+    loadDashboard();
   }, []);
 
-  const fetchPatients = async () => {
+  const loadDashboard = async () => {
     try {
-      const res = await fetch(`${api}/doctor/patients`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setPatients(data);
+      setLoading(true);
+
+      const [
+        patientsRes,
+        appointmentsRes,
+        labRequestsRes,
+        reportsRes,
+      ] = await Promise.all([
+        apiFetch("/api/doctor/patients"),
+        apiFetch("/api/doctor/appointments"),
+        apiFetch("/api/doctor/lab-requests"),
+        apiFetch("/api/doctor/reports"),
+      ]);
+
+      if (
+        !patientsRes.ok ||
+        !appointmentsRes.ok ||
+        !labRequestsRes.ok ||
+        !reportsRes.ok
+      ) {
+        throw new Error("Failed to load doctor dashboard");
+      }
+
+      const patientsData = await patientsRes.json();
+      const appointmentsData = await appointmentsRes.json();
+      const labRequestsData = await labRequestsRes.json();
+      const reportsData = await reportsRes.json();
+
+      setPatients(patientsData);
+      setAppointments(appointmentsData);
+      setLabRequests(labRequestsData);
+      setReports(reportsData);
     } catch (err) {
-      console.error("Error fetching patients:", err);
+      console.error("Doctor dashboard error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchAppointments = async () => {
-    try {
-      const res = await fetch(`${api}/doctor/appointments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setAppointments(data);
-    } catch (err) {
-      console.error("Error fetching appointments:", err);
-    }
-  };
-
-  const fetchLabRequests = async () => {
-    try {
-      const res = await fetch(`${api}/doctor/lab-requests`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setLabRequests(data);
-    } catch (err) {
-      console.error("Error fetching lab requests:", err);
-    }
-  };
-
-  const fetchReports = async () => {
-    try {
-      const res = await fetch(`${api}/doctor/reports`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setReports(data);
-    } catch (err) {
-      console.error("Error fetching reports:", err);
-    }
-  };
+  if (loading) {
+    return <div>Loading doctor dashboard...</div>;
+  }
 
   return (
     <div>
@@ -159,7 +155,8 @@ export default function DoctorDashboard({ api, token }) {
           <ul>
             {reports.map((r) => (
               <li key={r.id}>
-                {r.date} - {r.summary} ({r.patientName})
+                {new Date(r.date).toLocaleDateString()} — {r.summary} (
+                {r.patientName})
               </li>
             ))}
           </ul>
@@ -170,6 +167,12 @@ export default function DoctorDashboard({ api, token }) {
 }
 
 const styles = {
-  section: { marginBottom: "30px" },
-  table: { width: "100%", borderCollapse: "collapse", marginTop: "10px" },
+  section: {
+    marginBottom: "30px",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: "10px",
+  },
 };
