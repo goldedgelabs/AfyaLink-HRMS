@@ -1,28 +1,33 @@
 import React, { useEffect, useState } from "react";
-import { apiFetch } from "../utils/auth";
+import { apiFetch } from "../../utils/apiFetch";
 
 export default function SuperAdminDashboard() {
   const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     name: "",
     adminName: "",
     adminEmail: "",
     adminPassword: "",
   });
-  const [editingId, setEditingId] = useState(null);
 
+  /* --------------------------------------------------
+     LOAD HOSPITALS
+  -------------------------------------------------- */
   const loadHospitals = async () => {
     setLoading(true);
     setErr("");
+
     try {
       const res = await apiFetch("/api/hospitals");
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Failed to load hospitals");
       const data = await res.json();
       setHospitals(data);
-    } catch {
-      setErr("Failed to load hospitals");
+    } catch (e) {
+      setErr(e.message || "Failed to load hospitals");
     } finally {
       setLoading(false);
     }
@@ -32,6 +37,9 @@ export default function SuperAdminDashboard() {
     loadHospitals();
   }, []);
 
+  /* --------------------------------------------------
+     CREATE / UPDATE HOSPITAL
+  -------------------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErr("");
@@ -47,8 +55,9 @@ export default function SuperAdminDashboard() {
             body: JSON.stringify(form),
           });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.msg || "Error saving hospital");
       }
 
@@ -65,6 +74,9 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  /* --------------------------------------------------
+     EDIT
+  -------------------------------------------------- */
   const handleEdit = (h) => {
     setEditingId(h._id);
     setForm({
@@ -75,25 +87,33 @@ export default function SuperAdminDashboard() {
     });
   };
 
+  /* --------------------------------------------------
+     DELETE
+  -------------------------------------------------- */
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this hospital?"))
-      return;
+    if (!window.confirm("Are you sure you want to delete this hospital?")) return;
 
     setErr("");
+
     try {
       const res = await apiFetch(`/api/hospitals/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error();
+
+      if (!res.ok) {
+        throw new Error("Failed to delete hospital");
+      }
+
       loadHospitals();
-    } catch {
-      setErr("Failed to delete hospital");
+    } catch (e) {
+      setErr(e.message || "Failed to delete hospital");
     }
   };
 
   return (
     <div className="premium-card">
-      <h2>🏥 Super Admin Dashboard – Hospitals</h2>
+      <h2>🏥 Super Admin Dashboard — Hospitals</h2>
+
       {err && <p style={{ color: "red" }}>{err}</p>}
 
       {/* CREATE / EDIT FORM */}
@@ -127,8 +147,7 @@ export default function SuperAdminDashboard() {
         />
 
         <label>
-          Admin Password{" "}
-          {editingId ? "(leave blank to keep current)" : ""}
+          Admin Password {editingId && "(leave blank to keep current)"}
         </label>
         <input
           type="password"
@@ -146,8 +165,8 @@ export default function SuperAdminDashboard() {
 
           {editingId && (
             <button
-              className="button cancel-btn"
               type="button"
+              className="button cancel-btn"
               onClick={() => {
                 setEditingId(null);
                 setForm({
@@ -172,8 +191,8 @@ export default function SuperAdminDashboard() {
           <thead>
             <tr>
               <th>🏥 Name</th>
-              <th>👤 Admin Name</th>
-              <th>📧 Admin Email</th>
+              <th>👤 Admin</th>
+              <th>📧 Email</th>
               <th>⚙️ Actions</th>
             </tr>
           </thead>
@@ -204,7 +223,7 @@ export default function SuperAdminDashboard() {
             ) : (
               <tr>
                 <td colSpan="4" style={{ textAlign: "center" }}>
-                  No hospitals found.
+                  No hospitals found
                 </td>
               </tr>
             )}
