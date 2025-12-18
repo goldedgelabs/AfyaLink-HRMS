@@ -1,51 +1,53 @@
 import React, { useEffect, useState } from "react";
+import { apiFetch } from "../../utils/apiFetch";
 
-export default function PatientDashboard({ api, token }) {
+export default function PatientDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [labResults, setLabResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  /* --------------------------------------------------
+     LOAD ALL DATA
+  -------------------------------------------------- */
+  const loadAll = async () => {
+    setLoading(true);
+    setErr("");
+
+    try {
+      const [apptRes, recordsRes, labsRes] = await Promise.all([
+        apiFetch("/api/patients/appointments"),
+        apiFetch("/api/patients/records"),
+        apiFetch("/api/patients/lab-results"),
+      ]);
+
+      if (!apptRes.ok || !recordsRes.ok || !labsRes.ok) {
+        throw new Error("Failed to load patient data");
+      }
+
+      const [appts, records, labs] = await Promise.all([
+        apptRes.json(),
+        recordsRes.json(),
+        labsRes.json(),
+      ]);
+
+      setAppointments(appts);
+      setMedicalRecords(records);
+      setLabResults(labs);
+    } catch (e) {
+      setErr(e.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchAppointments();
-    fetchMedicalRecords();
-    fetchLabResults();
+    loadAll();
   }, []);
 
-  const fetchAppointments = async () => {
-    try {
-      const res = await fetch(`${api}/patients/appointments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setAppointments(data);
-    } catch (err) {
-      console.error("Error fetching appointments:", err);
-    }
-  };
-
-  const fetchMedicalRecords = async () => {
-    try {
-      const res = await fetch(`${api}/patients/records`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setMedicalRecords(data);
-    } catch (err) {
-      console.error("Error fetching medical records:", err);
-    }
-  };
-
-  const fetchLabResults = async () => {
-    try {
-      const res = await fetch(`${api}/patients/lab-results`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setLabResults(data);
-    } catch (err) {
-      console.error("Error fetching lab results:", err);
-    }
-  };
+  if (loading) return <p>Loading patient dashboard...</p>;
+  if (err) return <p style={{ color: "red" }}>{err}</p>;
 
   return (
     <div>
@@ -68,8 +70,8 @@ export default function PatientDashboard({ api, token }) {
             </thead>
             <tbody>
               {appointments.map((a) => (
-                <tr key={a.id}>
-                  <td>{a.date}</td>
+                <tr key={a._id || a.id}>
+                  <td>{new Date(a.date).toLocaleDateString()}</td>
                   <td>{a.time}</td>
                   <td>{a.doctorName}</td>
                   <td>{a.status}</td>
@@ -97,8 +99,8 @@ export default function PatientDashboard({ api, token }) {
             </thead>
             <tbody>
               {medicalRecords.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.date}</td>
+                <tr key={r._id || r.id}>
+                  <td>{new Date(r.date).toLocaleDateString()}</td>
                   <td>{r.doctorName}</td>
                   <td>{r.diagnosis}</td>
                   <td>{r.notes}</td>
@@ -126,8 +128,8 @@ export default function PatientDashboard({ api, token }) {
             </thead>
             <tbody>
               {labResults.map((l) => (
-                <tr key={l.id}>
-                  <td>{l.date}</td>
+                <tr key={l._id || l.id}>
+                  <td>{new Date(l.date).toLocaleDateString()}</td>
                   <td>{l.testType}</td>
                   <td>{l.result}</td>
                   <td>{l.doctorName}</td>
@@ -143,5 +145,9 @@ export default function PatientDashboard({ api, token }) {
 
 const styles = {
   section: { marginBottom: "30px" },
-  table: { width: "100%", borderCollapse: "collapse", marginTop: "10px" },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: "10px",
+  },
 };
