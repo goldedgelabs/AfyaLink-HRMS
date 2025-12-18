@@ -26,7 +26,7 @@ export default function Login() {
   }, []);
 
   /* ---------------------------------------
-     Submit handler (SAFE)
+     Submit handler (2FA SAFE)
   ---------------------------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,8 +40,16 @@ export default function Login() {
         localStorage.removeItem("remember_email");
       }
 
-      await login(email, password);
+      const result = await login(email, password);
 
+      // 🔐 2FA REQUIRED → redirect to OTP screen
+      if (result?.requires2FA) {
+        setInfo("Verification code sent to your email");
+        navigate("/2fa");
+        return;
+      }
+
+      // ✅ Normal login
       navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Invalid email or password");
