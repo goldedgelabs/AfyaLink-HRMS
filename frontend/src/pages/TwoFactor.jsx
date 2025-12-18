@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch } from "../utils/apiFetch";
 import { useAuth } from "../utils/auth";
@@ -14,11 +14,20 @@ export default function TwoFactor() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (!userId) {
-    navigate("/login");
-    return null;
-  }
+  /* ---------------------------------------
+     Guard: no userId → back to login
+  ---------------------------------------- */
+  useEffect(() => {
+    if (!userId) {
+      navigate("/login", { replace: true });
+    }
+  }, [userId, navigate]);
 
+  if (!userId) return null;
+
+  /* ---------------------------------------
+     Submit OTP
+  ---------------------------------------- */
   const submitOtp = async (e) => {
     e.preventDefault();
     setError("");
@@ -33,13 +42,13 @@ export default function TwoFactor() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.msg || "Invalid code");
+        throw new Error(data.msg || "Invalid or expired code");
       }
 
-      // 🔓 Unlock session
+      // 🔓 Unlock session (store access token + mark verified)
       complete2FA(data.accessToken);
 
-      navigate("/dashboard");
+      navigate("/", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -57,47 +66,56 @@ export default function TwoFactor() {
       <form onSubmit={submitOtp}>
         <input
           type="text"
+          inputMode="numeric"
           maxLength="6"
           placeholder="123456"
           value={otp}
-          onChange={(e) => setOtp(e.target.value)}
+          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
           required
         />
 
-        <button disabled={loading}>
+        <button disabled={loading || otp.length !== 6}>
           {loading ? "Verifying..." : "Verify"}
         </button>
       </form>
 
       <style>{`
         .auth-card {
-          max-width: 400px;
+          max-width: 420px;
           margin: 80px auto;
           padding: 32px;
           border-radius: 16px;
           background: white;
           text-align: center;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.08);
         }
         input {
           width: 100%;
-          padding: 12px;
-          margin: 16px 0;
-          font-size: 18px;
+          padding: 14px;
+          margin: 20px 0;
+          font-size: 20px;
           text-align: center;
-          letter-spacing: 6px;
+          letter-spacing: 8px;
+          border-radius: 10px;
+          border: 1px solid #ddd;
         }
         button {
           width: 100%;
-          padding: 12px;
+          padding: 14px;
           background: #2563eb;
           color: white;
           border: none;
-          border-radius: 8px;
+          border-radius: 10px;
           font-weight: 600;
+          cursor: pointer;
+        }
+        button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
         .error {
-          color: red;
-          margin-top: 8px;
+          color: #dc2626;
+          margin-top: 12px;
         }
       `}</style>
     </div>
