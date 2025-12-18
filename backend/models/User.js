@@ -60,6 +60,7 @@ const userSchema = new Schema(
         userAgent: { type: String },
         lastUsed: { type: Date, default: Date.now },
         createdAt: { type: Date, default: Date.now },
+        verifiedAt: Date, // 🔐 when OTP was last confirmed
       },
     ],
   },
