@@ -1,60 +1,74 @@
 import React, { useEffect, useState } from "react";
+import { apiFetch } from "../../utils/apiFetch";
 
-export default function LabTechDashboard({ api, token }) {
+export default function LabTechDashboard() {
   const [tests, setTests] = useState([]);
   const [completedTests, setCompletedTests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  /* --------------------------------------------------
+     LOAD DATA
+  -------------------------------------------------- */
+  const loadAll = async () => {
+    setLoading(true);
+    setErr("");
+
+    try {
+      const [pendingRes, completedRes] = await Promise.all([
+        apiFetch("/api/labtech/pending-tests"),
+        apiFetch("/api/labtech/completed-tests"),
+      ]);
+
+      if (!pendingRes.ok || !completedRes.ok) {
+        throw new Error("Failed to load lab tests");
+      }
+
+      const [pending, completed] = await Promise.all([
+        pendingRes.json(),
+        completedRes.json(),
+      ]);
+
+      setTests(pending);
+      setCompletedTests(completed);
+    } catch (e) {
+      setErr(e.message || "Failed to load lab data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchLabTests();
-    fetchCompletedTests();
+    loadAll();
   }, []);
 
-  const fetchLabTests = async () => {
-    try {
-      const res = await fetch(`${api}/labtech/pending-tests`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setTests(data);
-    } catch (err) {
-      console.error("Error fetching lab tests:", err);
-    }
-  };
-
-  const fetchCompletedTests = async () => {
-    try {
-      const res = await fetch(`${api}/labtech/completed-tests`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setCompletedTests(data);
-    } catch (err) {
-      console.error("Error fetching completed tests:", err);
-    }
-  };
-
+  /* --------------------------------------------------
+     UPLOAD LAB RESULT
+  -------------------------------------------------- */
   const handleUploadResult = async (testId) => {
     const result = prompt("Enter test result:");
     if (!result) return;
 
     try {
-      const res = await fetch(`${api}/labtech/upload-result/${testId}`, {
+      const res = await apiFetch(`/api/labtech/upload-result/${testId}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ result }),
       });
-      if (res.ok) {
-        alert("Result uploaded successfully!");
-        fetchLabTests();
-        fetchCompletedTests();
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.msg || "Failed to upload result");
       }
-    } catch (err) {
-      console.error("Error uploading result:", err);
+
+      alert("✅ Result uploaded successfully!");
+      loadAll();
+    } catch (e) {
+      alert(e.message || "Error uploading result");
     }
   };
+
+  if (loading) return <p>Loading lab dashboard...</p>;
+  if (err) return <p style={{ color: "red" }}>{err}</p>;
 
   return (
     <div>
@@ -77,12 +91,15 @@ export default function LabTechDashboard({ api, token }) {
             </thead>
             <tbody>
               {tests.map((t) => (
-                <tr key={t.id}>
+                <tr key={t._id || t.id}>
                   <td>{t.patientName}</td>
                   <td>{t.testType}</td>
                   <td>{t.requestedBy}</td>
                   <td>
-                    <button style={styles.uploadBtn} onClick={() => handleUploadResult(t.id)}>
+                    <button
+                      style={styles.uploadBtn}
+                      onClick={() => handleUploadResult(t._id || t.id)}
+                    >
                       📤 Upload Result
                     </button>
                   </td>
@@ -110,7 +127,7 @@ export default function LabTechDashboard({ api, token }) {
             </thead>
             <tbody>
               {completedTests.map((t) => (
-                <tr key={t.id}>
+                <tr key={t._id || t.id}>
                   <td>{t.patientName}</td>
                   <td>{t.testType}</td>
                   <td>{t.result}</td>
@@ -127,7 +144,11 @@ export default function LabTechDashboard({ api, token }) {
 
 const styles = {
   section: { marginBottom: "30px" },
-  table: { width: "100%", borderCollapse: "collapse", marginTop: "10px" },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: "10px",
+  },
   uploadBtn: {
     padding: "6px 12px",
     borderRadius: "6px",
