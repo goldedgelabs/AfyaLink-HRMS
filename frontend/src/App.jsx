@@ -69,7 +69,7 @@ import CRDTPatientEditor from "./pages/Admin/CRDTPatientEditor";
 import RealTimeIntegrations from "./pages/Admin/RealTimeIntegrations";
 
 /* =====================================================
-   PROTECTED ROUTE (ROLE-AWARE)
+   PROTECTED ROUTE (ROLE + 2FA AWARE)
 ===================================================== */
 function Protected({ roles }) {
   const { user, loading } = useAuth();
@@ -77,11 +77,18 @@ function Protected({ roles }) {
   if (loading) return null;
 
   // 🔐 Not logged in
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-  // 🚫 Guests cannot access app
+  // 🚫 Guest isolation
   if (user.role === "guest") {
     return <Navigate to="/guest" replace />;
+  }
+
+  // 🔐 HARD BLOCK — 2FA NOT VERIFIED
+  if (user.twoFactorVerified === false) {
+    return <Navigate to="/2fa" replace />;
   }
 
   // ⛔ Role restriction
