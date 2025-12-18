@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { apiFetch } from "../utils/apiFetch";
-import { apiFetch } from "../../utils/auth";
+import { useAuth } from "../../utils/auth";
 
 /**
  * Payments Page
