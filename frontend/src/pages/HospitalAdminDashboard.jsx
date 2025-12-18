@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { apiFetch } from "../utils/auth";
-import Register from "./Register";
+import React, { useEffect, useState } from "react";
+import { apiFetch } from "../../utils/apiFetch";
+import Register from "../Register";
 
 export default function HospitalAdminDashboard() {
   const [staff, setStaff] = useState([]);
@@ -9,55 +9,71 @@ export default function HospitalAdminDashboard() {
   const [showRegister, setShowRegister] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
 
-  useEffect(() => {
-    loadStaff();
-  }, []);
-
+  /* --------------------------------------------------
+     LOAD STAFF
+  -------------------------------------------------- */
   const loadStaff = async () => {
     setLoading(true);
     setErr("");
+
     try {
       const res = await apiFetch("/api/auth/users?hospital=true");
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Failed to load staff");
       const data = await res.json();
       setStaff(data);
-    } catch {
-      setErr("Failed to load staff");
+    } catch (e) {
+      setErr(e.message || "Failed to load staff");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegister = () => {
+  useEffect(() => {
+    loadStaff();
+  }, []);
+
+  /* --------------------------------------------------
+     AFTER REGISTER / UPDATE
+  -------------------------------------------------- */
+  const handleRegisterComplete = () => {
     setShowRegister(false);
     setEditingStaff(null);
     loadStaff();
   };
 
-  const handleEdit = (s) => {
-    setEditingStaff(s);
+  /* --------------------------------------------------
+     EDIT STAFF
+  -------------------------------------------------- */
+  const handleEdit = (staffMember) => {
+    setEditingStaff(staffMember);
     setShowRegister(true);
   };
 
+  /* --------------------------------------------------
+     DELETE STAFF
+  -------------------------------------------------- */
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to remove this staff member?"))
       return;
 
     setErr("");
+
     try {
       const res = await apiFetch(`/api/auth/users/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error();
+
+      if (!res.ok) throw new Error("Failed to delete staff");
       loadStaff();
-    } catch {
-      setErr("Failed to delete staff");
+    } catch (e) {
+      setErr(e.message || "Failed to delete staff");
     }
   };
 
   return (
     <div className="premium-card">
-      <h2>🏥 Hospital Admin – Staff Management</h2>
+      <h2>🏥 Hospital Admin — Staff Management</h2>
+
       {err && <p style={{ color: "red" }}>{err}</p>}
 
       <button
@@ -70,15 +86,17 @@ export default function HospitalAdminDashboard() {
         ➕ Register Staff
       </button>
 
+      {/* REGISTER / EDIT STAFF */}
       {showRegister && (
         <Register
-          onRegister={handleRegister}
+          onRegister={handleRegisterComplete}
           allowedRoles={["doctor", "nurse", "labtech"]}
           toggleLogin={() => setShowRegister(false)}
           editingStaff={editingStaff}
         />
       )}
 
+      {/* STAFF LIST */}
       {loading ? (
         <p>Loading staff...</p>
       ) : (
@@ -108,7 +126,7 @@ export default function HospitalAdminDashboard() {
                     <button
                       className="button gradient-red"
                       onClick={() => handleDelete(s._id)}
-                      style={{ marginLeft: 5 }}
+                      style={{ marginLeft: 6 }}
                     >
                       🗑 Delete
                     </button>
@@ -126,6 +144,7 @@ export default function HospitalAdminDashboard() {
         </table>
       )}
 
+      {/* LOCAL STYLES */}
       <style>{`
         .premium-card {
           background: rgba(255,255,255,0.85);
@@ -146,9 +165,6 @@ export default function HospitalAdminDashboard() {
         .table th {
           background: linear-gradient(135deg,#4f46e5,#06b6d4);
           color:#fff;
-        }
-        .table tr {
-          transition: transform 0.2s, background 0.2s;
         }
         .table tr:hover {
           background: rgba(59,130,246,0.1);
