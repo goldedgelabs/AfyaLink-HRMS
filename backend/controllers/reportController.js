@@ -1,48 +1,133 @@
 import Report from "../models/Report.js";
 import { io } from "../server.js";
 
-// Get all reports (Hospital Admin)
-export const getReports = async (req,res) => {
+/* ======================================================
+   GET ALL REPORTS (Hospital / Super Admin)
+====================================================== */
+export const getReports = async (req, res) => {
   try {
-    const reports = await Report.find().populate("patient createdBy");
+    const filter = {
+      hospital: req.user.hospital, // 🏥 TENANT ISOLATION
+    };
+
+    const reports = await Report.find(filter)
+      .populate("patient createdBy")
+      .sort({ createdAt: -1 });
+
     res.json(reports);
-  } catch(err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
-// Get own reports (Doctor / Patient)
-export const getMyReports = async (req,res) => {
+/* ======================================================
+   GET MY REPORTS (Doctor / Patient)
+====================================================== */
+export const getMyReports = async (req, res) => {
   try {
-    let filter = {};
-    if(req.user.role === "doctor") filter = { createdBy: req.user._id };
-    if(req.user.role === "patient") filter = { patient: req.user._id };
-    const reports = await Report.find(filter).populate("patient createdBy");
+    const baseFilter = {
+      hospital: req.user.hospital, // 🏥 TENANT ISOLATION
+    };
+
+    let roleFilter = {};
+
+    if (req.user.role === "Doctor") {
+      roleFilter.createdBy = req.user._id;
+    }
+
+    if (req.user.role === "Patient") {
+      roleFilter.patient = req.user._id;
+    }
+
+    const reports = await Report.find({
+      ...baseFilter,
+      ...roleFilter,
+    })
+      .populate("patient createdBy")
+      .sort({ createdAt: -1 });
+
     res.json(reports);
-  } catch(err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
-// Create report
-export const createReport = async (req,res) => {
+/* ======================================================
+   CREATE REPORT
+====================================================== */
+export const createReport = async (req, res) => {
   try {
-    const report = await Report.create(req.body);
-    io.emit("notification", { message: "New report created!" });
+    const report = await Report.create({
+      ...req.body,
+      createdBy: req.user._id,
+      hospital: req.user.hospital, // 🏥 LOCK TO TENANT
+    });
+
+    // 🔔 Scoped realtime notification (hospital room)
+    io.to(`hospital:${req.user.hospital}`).emit("notification", {
+      type: "REPORT_CREATED",
+      message: "New medical report created",
+      reportId: report._id,
+    });
+
     res.status(201).json(report);
-  } catch(err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
-// Update report
-export const updateReport = async (req,res) => {
+/* ======================================================
+   UPDATE REPORT
+====================================================== */
+export const updateReport = async (req, res) => {
   try {
-    const report = await Report.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    io.emit("notification", { message: "Report updated!" });
+    const report = await Report.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        hospital: req.user.hospital, // 🏥 TENANT GUARD
+      },
+      req.body,
+      { new: true }
+    );
+
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    io.to(`hospital:${req.user.hospital}`).emit("notification", {
+      type: "REPORT_UPDATED",
+      message: "Medical report updated",
+      reportId: report._id,
+    });
+
     res.json(report);
-  } catch(err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
-// Delete report
-export const deleteReport = async (req,res) => {
+/* ======================================================
+   DELETE REPORT
+====================================================== */
+export const deleteReport = async (req, res) => {
   try {
-    await Report.findByIdAndDelete(req.params.id);
-    io.emit("notification", { message: "Report deleted!" });
+    const report = await Report.findOneAndDelete({
+      _id: req.params.id,
+      hospital: req.user.hospital, // 🏥 TENANT GUARD
+    });
+
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    io.to(`hospital:${req.user.hospital}`).emit("notification", {
+      type: "REPORT_DELETED",
+      message: "Medical report deleted",
+      reportId: report._id,
+    });
+
     res.json({ message: "Deleted" });
-  } catch(err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
