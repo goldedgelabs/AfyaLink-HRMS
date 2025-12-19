@@ -69,7 +69,7 @@ export default function Register() {
           name="name"
           value={form.name}
           onChange={handleChange}
-          placeholder="John Doe"
+          placeholder="Joseph Were"
           required
         />
 
