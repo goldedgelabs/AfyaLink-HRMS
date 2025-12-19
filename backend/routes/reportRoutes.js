@@ -8,5 +8,12 @@ const router = express.Router();
 router.use(authenticate);
 router.get('/', authorize(['hospitaladmin', 'doctor']), getReports);
 router.get('/:id', authorize(['hospitaladmin', 'doctor']), getReportById);
+router.get(
+  "/revenue",
+  auth,
+  authorize("reports", "read"),
+  revenueSummary
+);
+
 
 export default router;
