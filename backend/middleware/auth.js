@@ -20,17 +20,18 @@ export default function auth(req, res, next) {
 
     const token = header.split(" ")[1];
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // ✅ MUST match token creation
+    const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
 
     // ✅ Attach trusted user info
     req.user = {
       id: decoded.id,
       role: decoded.role,
-      twoFactor: decoded.twoFactor, // 🔐 REQUIRED FOR 2FA
+      twoFactorVerified: decoded.twoFactorVerified,
     };
 
-    // 🔐 Enforce 2FA if required
-    if (req.user.twoFactor === false) {
+    // 🔐 Enforce 2FA only if explicitly false
+    if (decoded.twoFactorVerified === false) {
       return res.status(403).json({
         message: "2FA verification required",
       });
