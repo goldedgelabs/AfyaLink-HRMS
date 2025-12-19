@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import { apiFetch } from '../../services/api';
+import { apiFetch } from "../../utils/apiFetch";
 
 export default function Beds(){
   const [beds,setBeds]=useState([]);
