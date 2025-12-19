@@ -38,17 +38,17 @@ export default function Register() {
           name: form.name,
           email: form.email,
           password: form.password,
-          role: "patient", // ✅ force patient-only
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data?.msg || "Registration failed");
       }
 
-      // ✅ Success → go to login
-      navigate("/login");
+      // ✅ Redirect user to login with verification hint
+      navigate("/login?verify=true");
     } catch (err) {
       setError(err.message || "Registration failed. Try again.");
     } finally {
@@ -97,10 +97,7 @@ export default function Register() {
           label="Confirm password"
           value={form.confirmPassword}
           onChange={(e) =>
-            setForm({
-              ...form,
-              confirmPassword: e.target.value,
-            })
+            setForm({ ...form, confirmPassword: e.target.value })
           }
           required
         />
