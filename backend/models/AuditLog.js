@@ -1,21 +1,29 @@
 import mongoose from "mongoose";
 
-const auditSchema = new mongoose.Schema(
+const { Schema, model } = mongoose;
+
+const auditLogSchema = new Schema(
   {
-    actorId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    role: String,
+    actorId: { type: Schema.Types.ObjectId, ref: "User" },
+    actorRole: String,
 
     action: { type: String, required: true },
-    resource: String,
-    resourceId: mongoose.Schema.Types.ObjectId,
 
-    before: Object,
-    after: Object,
+    resource: String,
+    resourceId: Schema.Types.ObjectId,
+
+    before: Schema.Types.Mixed,
+    after: Schema.Types.Mixed,
+
+    hospital: { type: Schema.Types.ObjectId, ref: "Hospital" },
 
     ip: String,
     userAgent: String,
+
+    success: { type: Boolean, default: true },
+    error: String,
   },
   { timestamps: true }
 );
 
-export default mongoose.model("AuditLog", auditSchema);
+export default model("AuditLog", auditLogSchema);
