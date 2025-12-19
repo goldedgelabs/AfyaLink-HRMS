@@ -1,14 +1,16 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../utils/auth";
+import { useCan } from "../hooks/useCan";
 
 export default function Sidebar() {
-  const { role } = useAuth();
+  const { user } = useAuth();
+  const { can } = useCan();
 
-  if (!role) return null;
+  if (!user) return null;
 
   /* ================= GUEST (DEMO MODE) ================= */
-  if (role === "guest") {
+  if (user.role === "guest") {
     return (
       <aside className="sidebar">
         <nav>
@@ -16,8 +18,8 @@ export default function Sidebar() {
             <li><Link to="/guest">Demo Home</Link></li>
 
             <Section title="Demo">
-              <Item to="/ai/chatbot">AI Chatbot</Item>
-              <Item to="/ai/medical">AI Assistant</Item>
+              {can("ai", "chat") && <Item to="/ai/chatbot">AI Chatbot</Item>}
+              {can("ai", "medical") && <Item to="/ai/medical">AI Assistant</Item>}
             </Section>
           </ul>
         </nav>
@@ -36,7 +38,7 @@ export default function Sidebar() {
           <li><Link to="/">Home</Link></li>
 
           {/* ================= SUPER ADMIN ================= */}
-          {role === "SuperAdmin" && (
+          {can("superadmin", "read") && (
             <Section title="Super Admin">
               <Item to="/superadmin">Dashboard</Item>
               <Item to="/superadmin/rbac">RBAC</Item>
@@ -47,7 +49,7 @@ export default function Sidebar() {
           )}
 
           {/* ================= HOSPITAL ADMIN ================= */}
-          {["SuperAdmin", "HospitalAdmin"].includes(role) && (
+          {can("hospital", "manage") && (
             <>
               <Section title="Hospital Admin">
                 <Item to="/hospitaladmin">Dashboard</Item>
@@ -67,26 +69,28 @@ export default function Sidebar() {
           )}
 
           {/* ================= DOCTOR ================= */}
-          {role === "Doctor" && (
+          {can("doctor", "read") && (
             <Section title="Doctor">
               <Item to="/doctor">Dashboard</Item>
-              <Item to="/doctor/appointments">Appointments</Item>
-              <Item to="/ai/medical">AI Assistant</Item>
-              <Item to="/ai/triage">Triage</Item>
-              <Item to="/ai/voice">Voice Dictation</Item>
+              {can("appointments", "read") && (
+                <Item to="/doctor/appointments">Appointments</Item>
+              )}
+              {can("ai", "medical") && <Item to="/ai/medical">AI Assistant</Item>}
+              {can("ai", "triage") && <Item to="/ai/triage">Triage</Item>}
+              {can("ai", "voice") && <Item to="/ai/voice">Voice Dictation</Item>}
             </Section>
           )}
 
           {/* ================= NURSE ================= */}
-          {role === "Nurse" && (
+          {can("nurse", "read") && (
             <Section title="Nurse">
-              <Item to="/ai/medical">AI Assistant</Item>
-              <Item to="/ai/triage">Triage</Item>
+              {can("ai", "medical") && <Item to="/ai/medical">AI Assistant</Item>}
+              {can("ai", "triage") && <Item to="/ai/triage">Triage</Item>}
             </Section>
           )}
 
           {/* ================= LAB TECH ================= */}
-          {role === "LabTech" && (
+          {can("lab", "read") && (
             <Section title="Laboratory">
               <Item to="/labtech/labs">Lab Tests</Item>
               <Item to="/lab">Lab Dashboard</Item>
@@ -94,16 +98,16 @@ export default function Sidebar() {
           )}
 
           {/* ================= PATIENT ================= */}
-          {role === "Patient" && (
+          {can("patient", "read") && (
             <Section title="Patient">
               <Item to="/patient">Dashboard</Item>
-              <Item to="/payments">Payments</Item>
-              <Item to="/ai/chatbot">Health Chatbot</Item>
+              {can("payments", "read") && <Item to="/payments">Payments</Item>}
+              {can("ai", "chat") && <Item to="/ai/chatbot">Health Chatbot</Item>}
             </Section>
           )}
 
           {/* ================= PAYMENTS ================= */}
-          {["Patient", "HospitalAdmin", "SuperAdmin"].includes(role) && (
+          {can("payments", "read") && (
             <Section title="Finance">
               <Item to="/payments">Payments</Item>
               <Item to="/payments/full">Advanced Payments</Item>
@@ -111,7 +115,7 @@ export default function Sidebar() {
           )}
 
           {/* ================= REALTIME ================= */}
-          {["Doctor", "Nurse", "Patient"].includes(role) && (
+          {can("realtime", "read") && (
             <Section title="Realtime">
               <Item to="/ai/ws">Live AI Chat</Item>
             </Section>
