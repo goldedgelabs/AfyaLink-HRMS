@@ -10,88 +10,91 @@ import Sidebar from "./components/Sidebar";
 import Notifications from "./components/Notifications";
 import AIChatWS from "./components/AIChatWS";
 
-// Guest / Demo
+/* =======================
+   PUBLIC / AUTH
+======================= */
 import GuestDashboard from "./pages/GuestDashboard";
-
-// Auth pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import Unauthorized from "./pages/Unauthorized";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-
-// 🔐 2FA (PUBLIC)
 import TwoFactor from "./pages/TwoFactor";
 
-// Dashboards
+/* =======================
+   DASHBOARDS
+======================= */
 import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
 import HospitalAdminDashboard from "./pages/HospitalAdmin/Dashboard";
 import DoctorDashboard from "./pages/Doctor/Dashboard";
 import PatientDashboard from "./pages/Patient/Dashboard";
 
-// SuperAdmin
+/* =======================
+   SUPER ADMIN
+======================= */
 import RBAC from "./pages/SuperAdmin/RBAC";
 import ML from "./pages/SuperAdmin/ML";
 
-// AI
+/* =======================
+   AI
+======================= */
 import MedicalAssistant from "./pages/AI/MedicalAssistant";
 import Chatbot from "./pages/AI/Chatbot";
 import Triage from "./pages/AI/Triage";
 import VoiceDictation from "./pages/AI/VoiceDictation";
 
-// Hospital Admin
+/* =======================
+   HOSPITAL ADMIN
+======================= */
 import Patients from "./pages/HospitalAdmin/Patients";
 import Financials from "./pages/HospitalAdmin/Financials";
 import Branches from "./pages/HospitalAdmin/Branches";
-
-// Doctor
-import Appointments from "./pages/Doctor/Appointments";
-
-// Lab
-import LabTests from "./pages/LabTech/LabTests";
-import Lab from "./pages/LabTech/Lab";
-
-// Pharmacy / Inventory
 import Pharmacy from "./pages/HospitalAdmin/Pharmacy";
 import Inventory from "./pages/HospitalAdmin/Inventory";
 
-// Payments
+/* =======================
+   DOCTOR / LAB
+======================= */
+import Appointments from "./pages/Doctor/Appointments";
+import LabTests from "./pages/LabTech/LabTests";
+import Lab from "./pages/LabTech/Lab";
+
+/* =======================
+   PAYMENTS
+======================= */
 import PaymentsPage from "./pages/Payments/PaymentsPage";
 import PaymentsPageFull from "./pages/Payments/PaymentsFull";
 
-// Admin
+/* =======================
+   ADMIN (ENTERPRISE)
+======================= */
 import AdminDashboard from "./pages/Admin/Dashboard";
 import Analytics from "./pages/Admin/Analytics";
 import Reports from "./pages/Admin/Reports";
 import NotificationsPage from "./pages/Admin/NotificationsPage";
 import CRDTPatientEditor from "./pages/Admin/CRDTPatientEditor";
 import RealTimeIntegrations from "./pages/Admin/RealTimeIntegrations";
+import AuditLogs from "./pages/Admin/AuditLogs";
 
 /* =====================================================
-   PROTECTED ROUTE (ROLE + 2FA AWARE)
+   🔐 PROTECTED ROUTE (ROLE + 2FA ENFORCED)
 ===================================================== */
 function Protected({ roles }) {
   const { user, loading } = useAuth();
 
   if (loading) return null;
 
-  // 🔐 Not logged in
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
 
-  // 🚫 Guest isolation
   if (user.role === "guest") {
     return <Navigate to="/guest" replace />;
   }
 
-  // 🔐 HARD BLOCK — 2FA REQUIRED BUT NOT VERIFIED
   if (user.twoFactorRequired === true) {
     return <Navigate to="/2fa" replace />;
   }
 
-  // ⛔ Role restriction
   if (roles && !roles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />;
   }
@@ -120,30 +123,30 @@ function AppLayout() {
 }
 
 /* =====================================================
-   APP
+   APP ROUTER (FINAL)
 ===================================================== */
 export default function App() {
   return (
     <SocketProvider>
       <Routes>
-        {/* ---------------- PUBLIC ---------------- */}
+
+        {/* -------- PUBLIC -------- */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-
-        {/* 🔐 2FA (PUBLIC) */}
         <Route path="/2fa" element={<TwoFactor />} />
 
-        {/* ---------------- GUEST / DEMO ---------------- */}
+        {/* -------- GUEST -------- */}
         <Route path="/guest" element={<GuestDashboard />} />
 
-        {/* ---------------- AUTHENTICATED APP ---------------- */}
+        {/* -------- AUTHENTICATED -------- */}
         <Route element={<Protected />}>
           <Route element={<AppLayout />}>
-            <Route index element={<div>Welcome to AfyaLink HRMS</div>} />
+
+            <Route index element={<div>Welcome to AfyaLink HRMS 🚀</div>} />
 
             {/* Super Admin */}
             <Route path="superadmin" element={<SuperAdminDashboard />} />
@@ -174,17 +177,26 @@ export default function App() {
             <Route path="ai/voice" element={<VoiceDictation />} />
             <Route path="ai/ws" element={<AIChatWS />} />
 
-            {/* Admin */}
+            {/* Admin Core */}
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="admin/realtime" element={<RealTimeIntegrations />} />
             <Route path="admin/crdt-patients" element={<CRDTPatientEditor />} />
             <Route path="admin/notifications" element={<NotificationsPage />} />
 
-            {/* Analytics */}
+            {/* 🔐 AUDIT LOGS (ADMIN + SUPER ADMIN ONLY) */}
+            <Route
+              element={
+                <Protected roles={["SUPER_ADMIN", "HOSPITAL_ADMIN"]} />
+              }
+            >
+              <Route path="admin/audit" element={<AuditLogs />} />
+            </Route>
+
+            {/* Analytics & Reports */}
             <Route path="analytics" element={<Analytics />} />
             <Route path="reports" element={<Reports />} />
 
-            {/* Pharmacy */}
+            {/* Pharmacy & Inventory */}
             <Route path="pharmacy" element={<Pharmacy />} />
             <Route path="inventory" element={<Inventory />} />
 
@@ -194,6 +206,7 @@ export default function App() {
 
             {/* 404 */}
             <Route path="*" element={<div>404 — Page not found</div>} />
+
           </Route>
         </Route>
       </Routes>
