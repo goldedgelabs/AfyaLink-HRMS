@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../utils/auth";
 import PasswordInput from "../components/PasswordInput";
 
 export default function Login() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,6 +14,16 @@ export default function Login() {
 
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+
+  /* ---------------------------------------
+     Show verify message after register
+  ---------------------------------------- */
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("verify")) {
+      setInfo("Check your email to verify your account before logging in.");
+    }
+  }, [location.search]);
 
   /* ---------------------------------------
      Load remembered email
@@ -42,23 +53,21 @@ export default function Login() {
 
       const result = await login(email, password);
 
-      // 🔐 2FA REQUIRED → redirect with userId
+      // 🔐 2FA REQUIRED
       if (result?.requires2FA) {
-        setInfo("Verification code sent to your email");
-
         navigate("/2fa", {
           state: {
-            userId: result.userId, // 🔑 REQUIRED
+            userId: result.userId,
             email,
           },
         });
-
         return;
       }
 
-      // ✅ Normal login
+      // ✅ SUCCESS
       navigate("/dashboard");
     } catch (err) {
+      // ✅ show backend message (email not verified, etc.)
       setError(err.message || "Invalid email or password");
     }
   };
@@ -110,16 +119,6 @@ export default function Login() {
         <div className="auth-footer">
           <span>Don’t have an account?</span>
           <Link to="/register">Create account</Link>
-        </div>
-
-        <div className="demo-box">
-          <strong>Demo users</strong>
-          <ul>
-            <li>admin@afya.test / adminpass</li>
-            <li>dr.asha@afya.test / docpass</li>
-            <li>nurse.john@afya.test / nursepass</li>
-            <li>mary@afya.test / patientpass</li>
-          </ul>
         </div>
       </form>
     </div>
