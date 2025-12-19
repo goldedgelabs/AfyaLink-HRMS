@@ -14,19 +14,23 @@ export async function apiFetch(path, options = {}, _retry = false) {
 
   const headers = {
     ...(options.headers || {}),
-    "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+
+  // Only set JSON header when body exists
+  if (options.body) {
+    headers["Content-Type"] = "application/json";
+  }
 
   let response;
 
   try {
     response = await fetch(`${API_BASE}${path}`, {
       ...options,
-      credentials: "include", // 🔑 allow refresh cookie
+      credentials: "include", // 🔑 REQUIRED for refresh cookie
       headers,
     });
-  } catch (err) {
+  } catch {
     throw new Error("Network error. Please check your connection.");
   }
 
@@ -72,7 +76,7 @@ async function refreshAccessToken() {
 }
 
 /**
- * Logout helper (safe for frontend-only)
+ * Logout helper
  */
 export function logout() {
   localStorage.removeItem("token");
