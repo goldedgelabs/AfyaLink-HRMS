@@ -23,6 +23,16 @@ export const createAppointment = async (req, res, next) => {
       createdBy: req.user.id,
     });
 
+    // 🔐 ABAC CONTEXT (YES, EVEN ON CREATE)
+    req.resource = {
+      ownerId: String(appointment.patient),
+      hospital: appointment.hospital,
+      doctor: appointment.doctor,
+    };
+
+    // 🧾 Audit AFTER snapshot
+    res.locals.after = appointment;
+
     // 🔔 Realtime notify doctor
     try {
       if (doctor) {
@@ -52,11 +62,11 @@ export const getAppointment = async (req, res, next) => {
     // 🔐 ABAC CONTEXT (CRITICAL)
     req.resource = {
       ownerId: String(a.patient),
-      hospitalId: String(a.hospital),
-      doctorId: String(a.doctor),
+      hospital: a.hospital,
+      doctor: a.doctor,
     };
 
-    // 🧾 Audit snapshot
+    // 🧾 Audit BEFORE snapshot
     req.resourceSnapshot = a.toObject();
 
     res.json(a);
@@ -74,9 +84,9 @@ export const listAppointments = async (req, res, next) => {
     const filter = {};
 
     // 🔐 Scoped querying (performance + security)
-    if (user.role === "PATIENT") filter.patient = user.id;
-    if (user.role === "DOCTOR") filter.doctor = user.id;
-    if (user.hospitalId) filter.hospital = user.hospitalId;
+    if (user.role === "Patient") filter.patient = user.id;
+    if (user.role === "Doctor") filter.doctor = user.id;
+    if (user.hospital) filter.hospital = user.hospital;
 
     const items = await Appointment.find(filter)
       .populate("patient doctor hospital")
@@ -99,10 +109,11 @@ export const updateAppointment = async (req, res, next) => {
     // 🔐 ABAC CONTEXT
     req.resource = {
       ownerId: String(a.patient),
-      hospitalId: String(a.hospital),
-      doctorId: String(a.doctor),
+      hospital: a.hospital,
+      doctor: a.doctor,
     };
 
+    // 🧾 Audit BEFORE snapshot
     req.resourceSnapshot = a.toObject();
 
     const updated = await Appointment.findByIdAndUpdate(
@@ -110,6 +121,9 @@ export const updateAppointment = async (req, res, next) => {
       req.body,
       { new: true }
     );
+
+    // 🧾 Audit AFTER snapshot
+    res.locals.after = updated;
 
     try {
       getIO()
@@ -134,13 +148,17 @@ export const deleteAppointment = async (req, res, next) => {
     // 🔐 ABAC CONTEXT
     req.resource = {
       ownerId: String(a.patient),
-      hospitalId: String(a.hospital),
-      doctorId: String(a.doctor),
+      hospital: a.hospital,
+      doctor: a.doctor,
     };
 
+    // 🧾 Audit BEFORE snapshot
     req.resourceSnapshot = a.toObject();
 
     await a.deleteOne();
+
+    // 🧾 Audit AFTER snapshot (null = deleted)
+    res.locals.after = null;
 
     try {
       getIO()
