@@ -25,7 +25,7 @@ export default function ProfileSecurity() {
       const res = await apiFetch("/api/auth/change-password", {
         method: "POST",
         body: JSON.stringify({
-          currentPassword,
+          oldPassword: currentPassword, // ✅ MATCH BACKEND
           newPassword,
         }),
       });
@@ -33,7 +33,7 @@ export default function ProfileSecurity() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Failed to change password");
+        throw new Error(data.msg || "Failed to change password");
       }
 
       setMessage("Password changed successfully");
@@ -41,7 +41,7 @@ export default function ProfileSecurity() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Password change failed");
     } finally {
       setLoading(false);
     }
