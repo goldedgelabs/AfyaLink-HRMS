@@ -57,6 +57,21 @@ export default function Router() {
             </RoleRoute>
           }
         />
+        {/* =====================
+            LAB
+        ====================== */}
+        <Route
+          
+          {
+  path: "/admin/audit",
+  element: (
+    <RoleRoute roles={["SUPER_ADMIN", "HOSPITAL_ADMIN"]}>
+      <AuditLogs />
+    </RoleRoute>
+  ),
+}
+
+        />
 
         {/* =====================
             AUDIT (RESTRICTED)
