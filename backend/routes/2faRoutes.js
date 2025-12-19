@@ -4,21 +4,34 @@ import User from "../models/User.js";
 
 const router = express.Router();
 
-// 🔐 Get 2FA status
+/* ================================
+   GET 2FA STATUS
+================================ */
 router.get("/status", authMiddleware, async (req, res) => {
   const user = await User.findById(req.user.id).select("twoFactorEnabled");
-  res.json({ enabled: user.twoFactorEnabled });
+
+  if (!user) {
+    return res.status(404).json({ msg: "User not found" });
+  }
+
+  res.json({ enabled: Boolean(user.twoFactorEnabled) });
 });
 
-// 🔁 Toggle 2FA
+/* ================================
+   TOGGLE 2FA
+================================ */
 router.post("/toggle", authMiddleware, async (req, res) => {
   const { enabled } = req.body;
 
   const user = await User.findById(req.user.id);
-  user.twoFactorEnabled = enabled;
+  if (!user) {
+    return res.status(404).json({ msg: "User not found" });
+  }
+
+  user.twoFactorEnabled = Boolean(enabled);
   await user.save();
 
-  res.json({ enabled });
+  res.json({ enabled: user.twoFactorEnabled });
 });
 
 export default router;
