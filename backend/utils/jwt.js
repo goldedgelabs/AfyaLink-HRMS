@@ -1,7 +1,17 @@
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
+/* ======================================================
+   ACCESS TOKEN (SHORT-LIVED)
+====================================================== */
 export const signAccessToken = (payload) =>
-  jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+  jwt.sign(payload, process.env.ACCESS_SECRET, {
+    expiresIn: "15m",
+  });
 
+/* ======================================================
+   REFRESH TOKEN (LONG-LIVED)
+====================================================== */
 export const signRefreshToken = (payload) =>
-  jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '14d' });
+  jwt.sign(payload, process.env.REFRESH_SECRET, {
+    expiresIn: "14d",
+  });
