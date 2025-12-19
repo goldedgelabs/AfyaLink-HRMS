@@ -1,29 +1,37 @@
 import AuditLog from "../models/AuditLog.js";
 
 /* ======================================================
-   AUDIT MIDDLEWARE
+   AUDIT MIDDLEWARE (POST-RESPONSE, SAFE)
 ====================================================== */
 export const audit = (action, resource) => {
-  return async (req, res, next) => {
-    const before = req.resourceSnapshot || null;
+  return (req, res, next) => {
+    // Snapshot before state (set by controller if needed)
+    const before = req.resource || null;
 
     res.on("finish", async () => {
-      if (res.statusCode >= 400) return;
-
       try {
         await AuditLog.create({
-          actorId: req.user?.id,
-          role: req.user?.role,
+          actorId: req.user?.id || null,
+          actorRole: req.user?.role || null,
+
           action,
           resource,
-          resourceId: req.params?.id,
+          resourceId: req.params?.id || null,
+
           before,
-          after: req.body,
+          after: res.locals?.after || null,
+
+          hospital: req.user?.hospital || null,
+
           ip: req.ip,
           userAgent: req.headers["user-agent"],
+
+          success: res.statusCode < 400,
+          statusCode: res.statusCode,
         });
       } catch (err) {
-        console.error("Audit failed:", err.message);
+        // Never break the app because of audit failure
+        console.error("❌ Audit log failed:", err.message);
       }
     });
 
