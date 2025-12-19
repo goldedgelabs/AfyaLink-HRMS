@@ -1,78 +1,108 @@
-import axios from 'axios';
-
-const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  withCredentials: true, // important for cookies / refresh tokens
-  timeout: 20000,
-});
-
-// Attach JWT token if present
-API.interceptors.request.use(
-  (cfg) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      cfg.headers.Authorization = `Bearer ${token}`;
-    }
-    return cfg;
-  },
-  (error) => Promise.reject(error)
-);
+// frontend/src/utils/api.js
+import { apiFetch } from './apiFetch';
 
 // ===================== AUTH =====================
-export const login = (data) => API.post('/auth/login', data);
-export const register = (data) => API.post('/auth/register', data);
-export const logout = () => API.post('/auth/logout');
-export const getProfile = () => API.get('/auth/me');
+export const login = (data) =>
+  apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
+export const register = (data) =>
+  apiFetch('/auth/register', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
+export const logout = () =>
+  apiFetch('/auth/logout', { method: 'POST' }).then(res => res.json());
+export const getProfile = () =>
+  apiFetch('/auth/me').then(res => res.json());
 
 // ===================== USERS =====================
-export const getUsers = () => API.get('/users');
-export const getUserById = (id) => API.get(`/users/${id}`);
-export const updateUser = (id, data) => API.put(`/users/${id}`, data);
-export const deleteUser = (id) => API.delete(`/users/${id}`);
+export const getUsers = () => apiFetch('/users').then(res => res.json());
+export const getUserById = (id) => apiFetch(`/users/${id}`).then(res => res.json());
+export const updateUser = (id, data) =>
+  apiFetch(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(res => res.json());
+export const deleteUser = (id) =>
+  apiFetch(`/users/${id}`, { method: 'DELETE' }).then(res => res.json());
 
 // ===================== HOSPITALS =====================
-export const getHospitals = () => API.get('/hospitals');
-export const getHospitalById = (id) => API.get(`/hospitals/${id}`);
-export const createHospital = (data) => API.post('/hospitals', data);
-export const updateHospital = (id, data) => API.put(`/hospitals/${id}`, data);
+export const getHospitals = () => apiFetch('/hospitals').then(res => res.json());
+export const getHospitalById = (id) => apiFetch(`/hospitals/${id}`).then(res => res.json());
+export const createHospital = (data) =>
+  apiFetch('/hospitals', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
+export const updateHospital = (id, data) =>
+  apiFetch(`/hospitals/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(res => res.json());
 
 // ===================== PATIENTS =====================
-export const getPatients = () => API.get('/patients');
-export const getPatientById = (id) => API.get(`/patients/${id}`);
-export const createPatient = (data) => API.post('/patients', data);
-export const updatePatient = (id, data) => API.put(`/patients/${id}`, data);
+export const getPatients = () => apiFetch('/patients').then(res => res.json());
+export const getPatientById = (id) => apiFetch(`/patients/${id}`).then(res => res.json());
+export const createPatient = (data) =>
+  apiFetch('/patients', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
+export const updatePatient = (id, data) =>
+  apiFetch(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(res => res.json());
 
 // ===================== APPOINTMENTS =====================
-export const getAppointments = () => API.get('/appointments');
-export const createAppointment = (data) => API.post('/appointments', data);
+export const getAppointments = () => apiFetch('/appointments').then(res => res.json());
+export const createAppointment = (data) =>
+  apiFetch('/appointments', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
 export const updateAppointment = (id, data) =>
-  API.put(`/appointments/${id}`, data);
+  apiFetch(`/appointments/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(res => res.json());
 export const deleteAppointment = (id) =>
-  API.delete(`/appointments/${id}`);
+  apiFetch(`/appointments/${id}`, { method: 'DELETE' }).then(res => res.json());
 
 // ===================== LABS =====================
-export const getLabTests = () => API.get('/labs');
-export const createLabTest = (data) => API.post('/labs', data);
+export const getLabTests = () => apiFetch('/labs').then(res => res.json());
+export const createLabTest = (data) =>
+  apiFetch('/labs', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
 export const updateLabTest = (id, data) =>
-  API.put(`/labs/${id}`, data);
+  apiFetch(`/labs/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(res => res.json());
 
 // ===================== FINANCIALS =====================
-export const getFinancials = () => API.get('/financials');
+export const getFinancials = () => apiFetch('/financials').then(res => res.json());
 export const createFinancial = (data) =>
-  API.post('/financials', data);
+  apiFetch('/financials', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
 export const updateFinancial = (id, data) =>
-  API.put(`/financials/${id}`, data);
+  apiFetch(`/financials/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(res => res.json());
 
 // ===================== TRANSFERS =====================
-export const getTransfers = () => API.get('/transfers');
+export const getTransfers = () => apiFetch('/transfers').then(res => res.json());
 export const createTransfer = (data) =>
-  API.post('/transfers', data);
+  apiFetch('/transfers', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
 
 // ===================== NOTIFICATIONS =====================
-export const getNotifications = () => API.get('/notifications');
+export const getNotifications = () => apiFetch('/notifications').then(res => res.json());
 
 // ===================== AI / ML =====================
-export const runAI = (data) => API.post('/ai', data);
-export const runML = (data) => API.post('/ml', data);
+export const runAI = (data) =>
+  apiFetch('/ai', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
+export const runML = (data) =>
+  apiFetch('/ml', { method: 'POST', body: JSON.stringify(data) }).then(res => res.json());
 
-export default API;
+// default export for backward compatibility
+export default {
+  login,
+  register,
+  logout,
+  getProfile,
+  getUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  getHospitals,
+  getHospitalById,
+  createHospital,
+  updateHospital,
+  getPatients,
+  getPatientById,
+  createPatient,
+  updatePatient,
+  getAppointments,
+  createAppointment,
+  updateAppointment,
+  deleteAppointment,
+  getLabTests,
+  createLabTest,
+  updateLabTest,
+  getFinancials,
+  createFinancial,
+  updateFinancial,
+  getTransfers,
+  createTransfer,
+  getNotifications,
+  runAI,
+  runML,
+};
