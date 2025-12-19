@@ -4,65 +4,90 @@ import bcrypt from "bcryptjs";
 const { Schema, model } = mongoose;
 
 /* ======================================================
-   USER SCHEMA
+   USER SCHEMA — RBAC + ABAC READY
 ====================================================== */
 const userSchema = new Schema(
   {
+    /* ---------------- BASIC IDENTITY ---------------- */
     name: { type: String, required: true },
 
-    email: { type: String, required: true, unique: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      index: true,
+    },
 
     password: { type: String },
 
+    /* ---------------- ROLE (RBAC) ---------------- */
     role: {
       type: String,
       enum: [
-        "SuperAdmin",
-        "HospitalAdmin",
-        "Doctor",
-        "Nurse",
-        "LabTech",
-        "Patient",
+        "SUPER_ADMIN",
+        "HOSPITAL_ADMIN",
+        "DOCTOR",
+        "NURSE",
+        "LAB_TECH",
+        "PHARMACIST",
+        "PATIENT",
+        "GUEST",
       ],
       required: true,
+      index: true,
     },
 
-    hospital: { type: Schema.Types.ObjectId, ref: "Hospital" },
+    /* ---------------- ABAC SCOPE ---------------- */
+    hospitalId: {
+      type: Schema.Types.ObjectId,
+      ref: "Hospital",
+      index: true,
+    },
 
     countryId: { type: String },
 
-    metadata: { type: Object, default: {} },
-
-    refreshTokens: { type: [String], default: [] },
-
-    active: { type: Boolean, default: true },
-
-    // ✅ Email verification
-    emailVerified: {
-      type: Boolean,
-      default: false,
+    /* ---------------- PERMISSION OVERRIDES ---------------- */
+    // Optional fine-grained permissions (enterprise use)
+    permissions: {
+      type: [String], // e.g. ["appointments.override", "records.read_all"]
+      default: [],
     },
 
-    // 🔐 2FA (Email OTP)
+    /* ---------------- ACCOUNT STATE ---------------- */
+    active: { type: Boolean, default: true },
+
+    emailVerified: { type: Boolean, default: false },
+
+    /* ---------------- AUTH TOKENS ---------------- */
+    refreshTokens: {
+      type: [String],
+      default: [],
+      select: false,
+    },
+
+    /* ---------------- 2FA ---------------- */
     twoFactorEnabled: {
       type: Boolean,
       default: false,
     },
 
-    /* ==================================================
-       🔐 TRUSTED DEVICES (STEP 1)
-       - deviceId is hashed
-       - lastUsed used later for expiry (Step 2)
-    =================================================== */
+    /* ---------------- TRUSTED DEVICES ---------------- */
     trustedDevices: [
       {
         deviceId: { type: String, required: true }, // hashed
-        userAgent: { type: String },
+        userAgent: String,
         lastUsed: { type: Date, default: Date.now },
+        verifiedAt: Date,
         createdAt: { type: Date, default: Date.now },
-        verifiedAt: Date, // 🔐 when OTP was last confirmed
       },
     ],
+
+    /* ---------------- EXTENSIBILITY ---------------- */
+    metadata: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
   },
   { timestamps: true }
 );
@@ -90,8 +115,7 @@ userSchema.methods.matchPassword = async function (entered) {
 };
 
 /* ======================================================
-   MODEL EXPORT (HOT-RELOAD SAFE)
+   MODEL EXPORT
 ====================================================== */
 const User = mongoose.models.User || model("User", userSchema);
-
 export default User;
