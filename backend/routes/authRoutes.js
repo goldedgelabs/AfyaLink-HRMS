@@ -6,7 +6,7 @@ import User from "../models/User.js";
 import { redis } from "../utils/redis.js";
 import { sendEmail } from "../utils/mailer.js";
 
-import  auth  from "../middleware/auth.js";
+import auth from "../middleware/auth.js";
 import {
   login,
   verify2FAOtp,
@@ -21,9 +21,10 @@ const router = express.Router();
 ====================================================== */
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, fullName, email, password } = req.body;
+    const finalName = name || fullName;
 
-    if (!name || !email || !password) {
+    if (!finalName || !email || !password) {
       return res.status(400).json({ msg: "Missing fields" });
     }
 
@@ -33,10 +34,10 @@ router.post("/register", async (req, res) => {
     }
 
     const user = await User.create({
-      name,
+      name: finalName,
       email,
       password,
-      role: "Patient",
+      role: "PATIENT",
       emailVerified: false,
     });
 
@@ -187,18 +188,14 @@ router.post("/reset-password", async (req, res) => {
 router.post("/change-password", auth, changePassword);
 
 /* ======================================================
-   LOGIN (2FA + TRUSTED DEVICES)
+   LOGIN
 ====================================================== */
 router.post("/login", login);
 
 /* ======================================================
-   2FA — VERIFY OTP (PUBLIC)
+   2FA
 ====================================================== */
 router.post("/2fa/verify", verify2FAOtp);
-
-/* ======================================================
-   2FA — RESEND OTP (RATE LIMITED)
-====================================================== */
 router.post("/2fa/resend", resend2FA);
 
 /* ======================================================
@@ -235,11 +232,7 @@ router.post("/refresh", async (req, res) => {
 
     res.json({
       accessToken: jwt.sign(
-        {
-          id: user._id,
-          role: user.role,
-          twoFactorVerified: true,
-        },
+        { id: user._id, role: user.role, twoFactorVerified: true },
         process.env.ACCESS_SECRET,
         { expiresIn: "15m" }
       ),
