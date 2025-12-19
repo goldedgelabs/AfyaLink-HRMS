@@ -6,6 +6,7 @@
 export const PERMISSIONS = {
   SUPER_ADMIN: {
     "*": ["*"],
+   audit: ["read"],
   },
 
   HOSPITAL_ADMIN: {
@@ -14,6 +15,7 @@ export const PERMISSIONS = {
     users: ["create", "read", "update"],
     billing: ["read", "update"],
     reports: ["read"],
+     audit: ["read"],
   },
 
   DOCTOR: {
