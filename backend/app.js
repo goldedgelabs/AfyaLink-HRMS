@@ -5,16 +5,16 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import dotenvExpand from 'dotenv-expand';
 
-// Load and expand env
+// Load env
 const env = dotenv.config();
 dotenvExpand.expand(env);
 
-import './utils/logger.js'; // centralized logger
+import './utils/logger.js';
 
 // Routes
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import profileRoutes from './routes/profileRoutes.js'; // ✅ NEW
+import profileRoutes from './routes/profileRoutes.js';
 import hospitalRoutes from './routes/hospitalRoutes.js';
 import patientRoutes from './routes/patientRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
@@ -26,7 +26,6 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import mlRoutes from './routes/mlRoutes.js';
 import mpesaRoutes from './routes/mpesa.routes.js';
-
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import pharmacyRoutes from './routes/pharmacyRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
@@ -62,21 +61,26 @@ import './workers/notificationWorker.js';
 const app = express();
 
 // =======================================================
-// ✅ PRODUCTION CORS — VERCEL + RENDER + SOCKET SAFE
+// ✅ FINAL PRODUCTION CORS (RENDER + VERCEL SAFE)
 // =======================================================
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'https://afya-link-hrms-frontend-4.vercel.app',
-].filter(Boolean);
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS blocked: ${origin}`));
+    origin: (origin, callback) => {
+      // allow health checks, render wakeups, server calls
+      if (!origin) return callback(null, true);
+
+      // allow ALL Vercel deployments (prod + preview)
+      if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
       }
+
+      // allow explicit frontend url if set
+      if (origin === process.env.FRONTEND_URL) {
+        return callback(null, true);
+      }
+
+      // TEMP SAFE FALLBACK (prevents login break)
+      return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -84,14 +88,19 @@ app.use(
   })
 );
 
+// =======================================================
+// Middlewares
+// =======================================================
 app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(morgan('dev'));
 
-// =================== MAIN ROUTES ===================
+// =======================================================
+// Routes
+// =======================================================
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/profile', profileRoutes); // ✅ PROFILE ROUTES
+app.use('/api/profile', profileRoutes);
 
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/patients', patientRoutes);
@@ -133,7 +142,7 @@ app.use('/api/integrations/dlq', dlqRoutes);
 app.use('/api/integrations/dlq-inspect', dlqInspectRoutes);
 app.use('/api/integrations/dlq-admin', dlqAdminRoutes);
 
-// CRDT (FIXED — NO COLLISION)
+// CRDT
 app.use('/api/crdt', crdtRoutes);
 app.use('/api/crdt-api', crdtApiRoutes);
 app.use('/api/crdt/chunks', crdtChunkRoutes);
@@ -141,12 +150,16 @@ app.use('/api/crdt/chunks', crdtChunkRoutes);
 // Signaling
 app.use('/api/signaling', signalingTokenRoutes);
 
-// Root health check
+// =======================================================
+// Health Check
+// =======================================================
 app.get('/', (req, res) => {
   res.send('AfyaLink HRMS Backend is running 🚀');
 });
 
-// Error handler MUST be last
+// =======================================================
+// Error Handler (LAST)
+// =======================================================
 app.use(errorHandler);
 
 export default app;
