@@ -2,45 +2,10 @@ import Appointment from "../models/Appointment.js";
 import { getIO } from "../utils/socket.js";
 
 /* ======================================================
-   HELPERS
-====================================================== */
-function assertOwnershipOrScope(user, appointment) {
-  // SUPER_ADMIN bypass
-  if (user.role === "SUPER_ADMIN") return true;
-
-  // Patient → only own appointment
-  if (
-    user.role === "PATIENT" &&
-    String(appointment.patient) !== user.id
-  ) {
-    return false;
-  }
-
-  // Doctor → assigned doctor only
-  if (
-    user.role === "DOCTOR" &&
-    String(appointment.doctor) !== user.id
-  ) {
-    return false;
-  }
-
-  // Hospital admin → same hospital only
-  if (
-    user.role === "HOSPITAL_ADMIN" &&
-    String(appointment.hospital) !== user.hospitalId
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-/* ======================================================
    CREATE APPOINTMENT
 ====================================================== */
 export const createAppointment = async (req, res, next) => {
   try {
-    const user = req.user;
     const { patient, doctor, hospital, scheduledAt, reason } = req.body;
 
     if (!patient || !scheduledAt) {
@@ -49,26 +14,13 @@ export const createAppointment = async (req, res, next) => {
         .json({ msg: "patient and scheduledAt are required" });
     }
 
-    // 🔒 Patient can only create for self
-    if (user.role === "PATIENT" && patient !== user.id) {
-      return res.status(403).json({ msg: "Forbidden" });
-    }
-
-    // 🔒 Hospital admin scoped
-    if (
-      user.role === "HOSPITAL_ADMIN" &&
-      hospital !== user.hospitalId
-    ) {
-      return res.status(403).json({ msg: "Cross-hospital access denied" });
-    }
-
     const appointment = await Appointment.create({
       patient,
       doctor,
       hospital,
       scheduledAt,
       reason,
-      createdBy: user.id,
+      createdBy: req.user.id,
     });
 
     // 🔔 Realtime notify doctor
@@ -91,42 +43,40 @@ export const createAppointment = async (req, res, next) => {
 ====================================================== */
 export const getAppointment = async (req, res, next) => {
   try {
-    const appointment = await Appointment.findById(req.params.id).populate(
+    const a = await Appointment.findById(req.params.id).populate(
       "patient doctor hospital"
     );
 
-    if (!appointment)
-      return res.status(404).json({ msg: "Not found" });
+    if (!a) return res.status(404).json({ msg: "Not found" });
 
-    if (!assertOwnershipOrScope(req.user, appointment)) {
-      return res.status(403).json({ msg: "Forbidden" });
-    }
+    // 🔐 ABAC CONTEXT (CRITICAL)
+    req.resource = {
+      ownerId: String(a.patient),
+      hospitalId: String(a.hospital),
+      doctorId: String(a.doctor),
+    };
 
-    res.json(appointment);
+    // 🧾 Audit snapshot
+    req.resourceSnapshot = a.toObject();
+
+    res.json(a);
   } catch (err) {
     next(err);
   }
 };
 
 /* ======================================================
-   LIST APPOINTMENTS (ROLE SCOPED)
+   LIST APPOINTMENTS
 ====================================================== */
 export const listAppointments = async (req, res, next) => {
   try {
     const user = req.user;
     const filter = {};
 
-    if (user.role === "PATIENT") {
-      filter.patient = user.id;
-    }
-
-    if (user.role === "DOCTOR") {
-      filter.doctor = user.id;
-    }
-
-    if (user.role === "HOSPITAL_ADMIN") {
-      filter.hospital = user.hospitalId;
-    }
+    // 🔐 Scoped querying (performance + security)
+    if (user.role === "PATIENT") filter.patient = user.id;
+    if (user.role === "DOCTOR") filter.doctor = user.id;
+    if (user.hospitalId) filter.hospital = user.hospitalId;
 
     const items = await Appointment.find(filter)
       .populate("patient doctor hospital")
@@ -143,13 +93,17 @@ export const listAppointments = async (req, res, next) => {
 ====================================================== */
 export const updateAppointment = async (req, res, next) => {
   try {
-    const appointment = await Appointment.findById(req.params.id);
-    if (!appointment)
-      return res.status(404).json({ msg: "Not found" });
+    const a = await Appointment.findById(req.params.id);
+    if (!a) return res.status(404).json({ msg: "Not found" });
 
-    if (!assertOwnershipOrScope(req.user, appointment)) {
-      return res.status(403).json({ msg: "Forbidden" });
-    }
+    // 🔐 ABAC CONTEXT
+    req.resource = {
+      ownerId: String(a.patient),
+      hospitalId: String(a.hospital),
+      doctorId: String(a.doctor),
+    };
+
+    req.resourceSnapshot = a.toObject();
 
     const updated = await Appointment.findByIdAndUpdate(
       req.params.id,
@@ -170,27 +124,28 @@ export const updateAppointment = async (req, res, next) => {
 };
 
 /* ======================================================
-   DELETE APPOINTMENT (STRICT)
+   DELETE APPOINTMENT
 ====================================================== */
 export const deleteAppointment = async (req, res, next) => {
   try {
-    const appointment = await Appointment.findById(req.params.id);
-    if (!appointment)
-      return res.status(404).json({ msg: "Not found" });
+    const a = await Appointment.findById(req.params.id);
+    if (!a) return res.status(404).json({ msg: "Not found" });
 
-    // 🔥 Only Hospital Admin or Super Admin
-    if (
-      !["HOSPITAL_ADMIN", "SUPER_ADMIN"].includes(req.user.role)
-    ) {
-      return res.status(403).json({ msg: "Forbidden" });
-    }
+    // 🔐 ABAC CONTEXT
+    req.resource = {
+      ownerId: String(a.patient),
+      hospitalId: String(a.hospital),
+      doctorId: String(a.doctor),
+    };
 
-    await appointment.deleteOne();
+    req.resourceSnapshot = a.toObject();
+
+    await a.deleteOne();
 
     try {
       getIO()
-        .to(String(appointment.patient))
-        .emit("appointmentDeleted", appointment);
+        .to(String(a.patient))
+        .emit("appointmentDeleted", a);
     } catch (_) {}
 
     res.json({ msg: "Deleted" });
