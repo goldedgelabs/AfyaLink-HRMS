@@ -19,6 +19,7 @@ export const PERMISSIONS = {
   DOCTOR: {
     appointments: ["read", "update"],
     records: ["create", "read", "update"],
+    consultation: ["complete"],
     prescriptions: ["create", "read"],
     lab_orders: ["create", "read"],
   },
