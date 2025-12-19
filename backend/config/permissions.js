@@ -33,9 +33,11 @@ export const PERMISSIONS = {
     lab_results: ["create", "read"],
   },
 
-  PHARMACIST: {
-    prescriptions: ["read", "update"],
-  },
+ 
+PHARMACIST: {
+  pharmacy: ["read", "dispense"],
+  inventory: ["read", "update"],
+},
 
   PATIENT: {
     appointments: ["create", "read_own"],
