@@ -1,16 +1,19 @@
 import { PERMISSIONS } from "../config/permissions.js";
 
-export function hasPermission(user, resource, action, req) {
+/* ======================================================
+   CENTRAL PERMISSION + ABAC ENFORCER (FINAL)
+====================================================== */
+export function hasPermission(user, resourceName, action, req) {
   if (!user) return false;
 
-  // Super powers
+  // 👑 PLATFORM SUPER ADMIN (NO TENANT LIMITS)
   if (user.role === "SuperAdmin") return true;
 
   const rolePerms = PERMISSIONS[user.role];
   if (!rolePerms) return false;
 
   const allowedActions =
-    rolePerms[resource] || rolePerms["*"];
+    rolePerms[resourceName] || rolePerms["*"];
 
   if (!allowedActions) return false;
 
@@ -18,35 +21,47 @@ export function hasPermission(user, resource, action, req) {
     allowedActions.includes("*") ||
     allowedActions.includes(action)
   ) {
-    return enforceABAC(user, req.resource);
+    return enforceABAC(user, req?.resource, req);
   }
 
   return false;
 }
 
-/* ================= ABAC RULES ================= */
-function enforceABAC(user, resource) {
-  if (!resource) return true; // list endpoints
+/* ======================================================
+   ABAC RULES (ZERO TRUST)
+====================================================== */
+function enforceABAC(user, resource, req) {
+  // LIST endpoints (no single resource yet)
+  if (!resource) return true;
 
-  // Owner-only
-  if (resource.ownerId && String(resource.ownerId) !== String(user.id)) {
-    return false;
-  }
-
-  // Hospital isolation
+  /* ---------------------------------------------
+     1️⃣ OWNER-ONLY ACCESS (PATIENT DATA)
+  --------------------------------------------- */
   if (
-    resource.hospital &&
-    user.hospital &&
-    String(resource.hospital) !== String(user.hospital)
+    resource.ownerId &&
+    String(resource.ownerId) !== String(user.id)
   ) {
     return false;
   }
 
-  // Doctor-specific access
+  /* ---------------------------------------------
+     2️⃣ HOSPITAL ISOLATION (MULTI-TENANT WALL)
+  --------------------------------------------- */
   if (
-    resource.doctor &&
+    resource.hospitalId &&
+    user.hospital &&
+    String(resource.hospitalId) !== String(user.hospital)
+  ) {
+    return false;
+  }
+
+  /* ---------------------------------------------
+     3️⃣ DOCTOR ASSIGNMENT CHECK
+  --------------------------------------------- */
+  if (
+    resource.doctorId &&
     user.role === "Doctor" &&
-    String(resource.doctor) !== String(user.id)
+    String(resource.doctorId) !== String(user.id)
   ) {
     return false;
   }
