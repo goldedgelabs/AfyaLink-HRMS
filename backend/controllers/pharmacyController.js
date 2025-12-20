@@ -1,14 +1,55 @@
-import { transitionEncounter } from "../services/workflowService.js";
-import { WORKFLOW } from "../constants/workflowStates.js";
+import { workflowService } from "../services/workflowService.js";
 
-export const dispenseMedication = async (req, res) => {
-  const { encounterId, prescriptionId } = req.body;
+/* ======================================================
+   DISPENSE MEDICATION (WORKFLOW ENFORCED)
+====================================================== */
+export const dispenseMedication = async (req, res, next) => {
+  try {
+    const {
+      workflowId,       // PHARMACY workflow ID
+      prescriptionId,
+      encounterId,
+      quantity,
+      notes,
+    } = req.body;
 
-  const encounter = await transitionEncounter(
-    encounterId,
-    WORKFLOW.DISPENSED,
-    { prescriptionId }
-  );
+    if (!workflowId || !prescriptionId || !encounterId) {
+      return res.status(400).json({
+        msg: "workflowId, prescriptionId, and encounterId are required",
+      });
+    }
 
-  res.json(encounter);
+    /**
+     * 🚨 ONLY LEGAL PHARMACY MUTATION
+     */
+    const wf = await workflowService.transition(
+      "PHARMACY",
+      workflowId,
+      {
+        prescriptionId,
+        encounterId,
+        quantity,
+        dispensedBy: req.user.id,
+        hospital: req.user.hospitalId,
+        notes,
+      }
+    );
+
+    /**
+     * Effects (authoritative):
+     * - Inventory decrement
+     * - Billing line item
+     * - Encounter update
+     * - Audit log
+     * - Receipt pending
+     */
+    res.json({
+      status: "dispensed",
+      prescription: wf.context.prescription,
+      encounter: wf.context.encounter,
+      billing: wf.context.billing,
+    });
+  } catch (err) {
+    next(err);
+  }
 };
