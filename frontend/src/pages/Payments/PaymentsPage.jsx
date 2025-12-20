@@ -1,39 +1,58 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 import { useAuth } from "../../utils/auth";
 
 /**
- * Payments Page
- * - Stripe (create payment intent)
- * - M-Pesa STK Push
- * - JWT protected
- * - Role safe
+ * Payments Page (WORKFLOW ENFORCED)
+ * - Stripe + M-Pesa
+ * - No double payment
+ * - Backend is authority
  */
 
 export default function PaymentsPage() {
   const { user } = useAuth();
-  const [amount, setAmount] = useState(1000);
-  const [phone, setPhone] = useState("");
+
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
-  if (!user) {
-    return <div>Please log in to make payments.</div>;
+  useEffect(() => {
+    if (user) loadTransactions();
+  }, [user]);
+
+  async function loadTransactions() {
+    try {
+      const res = await apiFetch("/api/billing/transactions");
+      if (!res.ok) throw new Error();
+      setTransactions(await res.json());
+    } catch {
+      setMsg("Failed to load transactions");
+    }
   }
 
-  /* =========================
-     STRIPE
-  ========================= */
-  const payStripe = async () => {
+  /* ===============================
+     STRIPE — CREATE INTENT ONLY
+  =============================== */
+  async function payStripe(tx) {
+    if (tx.status === "success") {
+      setMsg("Payment already completed");
+      return;
+    }
+
     setLoading(true);
     setMsg("");
 
     try {
-      const res = await apiFetch("/payments/stripe/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
-      });
+      const res = await apiFetch(
+        "/payments/stripe/create-payment-intent",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            amount: tx.amount,
+            transactionId: tx._id, // 🔒 bind to transaction
+          }),
+        }
+      );
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Stripe failed");
@@ -47,14 +66,19 @@ export default function PaymentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  /* =========================
-     M-PESA
-  ========================= */
-  const payMpesa = async () => {
-    if (!phone) {
-      setMsg("Enter phone number e.g. 2547XXXXXXXX");
+  /* ===============================
+     M-PESA — STK PUSH ONLY
+  =============================== */
+  async function payMpesa(tx) {
+    if (!tx.phone) {
+      setMsg("Missing phone number on transaction");
+      return;
+    }
+
+    if (tx.status === "success") {
+      setMsg("Payment already completed");
       return;
     }
 
@@ -64,77 +88,101 @@ export default function PaymentsPage() {
     try {
       const res = await apiFetch("/payments/mpesa/stk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, phone }),
+        body: JSON.stringify({
+          amount: tx.amount,
+          phone: tx.phone,
+          transactionId: tx._id, // 🔒 bind to transaction
+        }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "M-Pesa failed");
 
-      setMsg("M-Pesa STK Push sent successfully.");
+      setMsg("M-Pesa STK Push sent. Await confirmation.");
     } catch (err) {
       setMsg(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  /* =========================
+  if (!user) return <div>Please log in</div>;
+
+  /* ===============================
      UI
-  ========================= */
+  =============================== */
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto" }}>
+    <div className="card premium-card">
       <h2>Payments</h2>
-
-      <div style={{ marginBottom: 12 }}>
-        <label>Amount (KES)</label>
-        <input
-          type="number"
-          value={amount}
-          min={1}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          style={{ width: "100%", padding: 8 }}
-        />
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <label>M-Pesa Phone</label>
-        <input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="2547XXXXXXXX"
-          style={{ width: "100%", padding: 8 }}
-        />
-      </div>
-
-      <button
-        onClick={payStripe}
-        disabled={loading}
-        style={{ width: "100%", marginBottom: 10 }}
-      >
-        Pay with Stripe
-      </button>
-
-      <button
-        onClick={payMpesa}
-        disabled={loading}
-        style={{ width: "100%" }}
-      >
-        Pay with M-Pesa (STK)
-      </button>
 
       {msg && (
         <pre
           style={{
-            marginTop: 16,
-            padding: 12,
             background: "#f3f4f6",
+            padding: 12,
             whiteSpace: "pre-wrap",
           }}
         >
           {msg}
         </pre>
       )}
+
+      <table className="table premium-table">
+        <thead>
+          <tr>
+            <th>Patient</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {transactions.length ? (
+            transactions.map((tx) => (
+              <tr key={tx._id}>
+                <td>{tx.patient?.name || "—"}</td>
+                <td>{tx.amount} {tx.currency}</td>
+                <td>
+                  <strong
+                    style={{
+                      color:
+                        tx.status === "success"
+                          ? "green"
+                          : tx.status === "failed"
+                          ? "red"
+                          : "orange",
+                    }}
+                  >
+                    {tx.status.toUpperCase()}
+                  </strong>
+                </td>
+                <td>
+                  <button
+                    disabled={loading || tx.status === "success"}
+                    onClick={() => payStripe(tx)}
+                  >
+                    Stripe
+                  </button>
+
+                  <button
+                    disabled={loading || tx.status === "success"}
+                    onClick={() => payMpesa(tx)}
+                    style={{ marginLeft: 8 }}
+                  >
+                    M-Pesa
+                  </button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4" style={{ textAlign: "center" }}>
+                No pending payments
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
