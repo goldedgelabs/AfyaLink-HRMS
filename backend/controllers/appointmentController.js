@@ -1,12 +1,13 @@
+import { workflowService } from "../services/workflowService.js";
 import Appointment from "../models/Appointment.js";
 import { getIO } from "../utils/socket.js";
 
 /* ======================================================
-   CREATE APPOINTMENT
+   CREATE APPOINTMENT (WORKFLOW ENTRY)
 ====================================================== */
 export const createAppointment = async (req, res, next) => {
   try {
-    const { patient, doctor, hospital, scheduledAt, reason } = req.body;
+    const { patient, doctor, scheduledAt, reason } = req.body;
 
     if (!patient || !scheduledAt) {
       return res
@@ -14,26 +15,31 @@ export const createAppointment = async (req, res, next) => {
         .json({ msg: "patient and scheduledAt are required" });
     }
 
-    const appointment = await Appointment.create({
+    /**
+     * 🚨 ONLY LEGAL WAY TO CREATE APPOINTMENT
+     */
+    const wf = await workflowService.start("CONSULTATION", {
       patient,
       doctor,
-      hospital,
+      hospital: req.user.hospitalId,
       scheduledAt,
       reason,
       createdBy: req.user.id,
     });
 
-    // 🔐 ABAC CONTEXT (YES, EVEN ON CREATE)
+    const appointment = wf.context.appointment;
+
+    /* 🔐 ABAC CONTEXT */
     req.resource = {
       ownerId: String(appointment.patient),
       hospital: appointment.hospital,
       doctor: appointment.doctor,
     };
 
-    // 🧾 Audit AFTER snapshot
+    /* 🧾 Audit AFTER snapshot */
     res.locals.after = appointment;
 
-    // 🔔 Realtime notify doctor
+    /* 🔔 Notify doctor */
     try {
       if (doctor) {
         getIO()
@@ -49,7 +55,7 @@ export const createAppointment = async (req, res, next) => {
 };
 
 /* ======================================================
-   GET APPOINTMENT
+   GET APPOINTMENT (READ ONLY — ALLOWED)
 ====================================================== */
 export const getAppointment = async (req, res, next) => {
   try {
@@ -59,14 +65,14 @@ export const getAppointment = async (req, res, next) => {
 
     if (!a) return res.status(404).json({ msg: "Not found" });
 
-    // 🔐 ABAC CONTEXT (CRITICAL)
+    /* 🔐 ABAC CONTEXT */
     req.resource = {
       ownerId: String(a.patient),
       hospital: a.hospital,
       doctor: a.doctor,
     };
 
-    // 🧾 Audit BEFORE snapshot
+    /* 🧾 Audit BEFORE snapshot */
     req.resourceSnapshot = a.toObject();
 
     res.json(a);
@@ -76,14 +82,13 @@ export const getAppointment = async (req, res, next) => {
 };
 
 /* ======================================================
-   LIST APPOINTMENTS
+   LIST APPOINTMENTS (READ ONLY)
 ====================================================== */
 export const listAppointments = async (req, res, next) => {
   try {
     const user = req.user;
     const filter = {};
 
-    // 🔐 Scoped querying (performance + security)
     if (user.role === "Patient") filter.patient = user.id;
     if (user.role === "Doctor") filter.doctor = user.id;
     if (user.hospital) filter.hospital = user.hospital;
@@ -99,30 +104,39 @@ export const listAppointments = async (req, res, next) => {
 };
 
 /* ======================================================
-   UPDATE APPOINTMENT
+   UPDATE APPOINTMENT (WORKFLOW TRANSITION)
 ====================================================== */
 export const updateAppointment = async (req, res, next) => {
   try {
     const a = await Appointment.findById(req.params.id);
     if (!a) return res.status(404).json({ msg: "Not found" });
 
-    // 🔐 ABAC CONTEXT
+    /* 🔐 ABAC CONTEXT */
     req.resource = {
       ownerId: String(a.patient),
       hospital: a.hospital,
       doctor: a.doctor,
     };
 
-    // 🧾 Audit BEFORE snapshot
+    /* 🧾 Audit BEFORE */
     req.resourceSnapshot = a.toObject();
 
-    const updated = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
+    /**
+     * 🚨 NO DIRECT UPDATE
+     * This is a CONSULTATION workflow transition
+     */
+    const wf = await workflowService.transition(
+      "CONSULTATION",
+      a.workflowId,
+      {
+        updates: req.body,
+        actor: req.user,
+      }
     );
 
-    // 🧾 Audit AFTER snapshot
+    const updated = wf.context.appointment;
+
+    /* 🧾 Audit AFTER */
     res.locals.after = updated;
 
     try {
@@ -138,35 +152,46 @@ export const updateAppointment = async (req, res, next) => {
 };
 
 /* ======================================================
-   DELETE APPOINTMENT
+   DELETE APPOINTMENT (WORKFLOW CANCEL)
 ====================================================== */
 export const deleteAppointment = async (req, res, next) => {
   try {
     const a = await Appointment.findById(req.params.id);
     if (!a) return res.status(404).json({ msg: "Not found" });
 
-    // 🔐 ABAC CONTEXT
+    /* 🔐 ABAC CONTEXT */
     req.resource = {
       ownerId: String(a.patient),
       hospital: a.hospital,
       doctor: a.doctor,
     };
 
-    // 🧾 Audit BEFORE snapshot
+    /* 🧾 Audit BEFORE */
     req.resourceSnapshot = a.toObject();
 
-    await a.deleteOne();
+    /**
+     * 🚨 APPOINTMENTS ARE NEVER DELETED
+     * They are CANCELLED via workflow
+     */
+    await workflowService.transition(
+      "CONSULTATION",
+      a.workflowId,
+      {
+        cancel: true,
+        actor: req.user,
+      }
+    );
 
-    // 🧾 Audit AFTER snapshot (null = deleted)
+    /* 🧾 Audit AFTER (cancelled) */
     res.locals.after = null;
 
     try {
       getIO()
         .to(String(a.patient))
-        .emit("appointmentDeleted", a);
+        .emit("appointmentCancelled", a);
     } catch (_) {}
 
-    res.json({ msg: "Deleted" });
+    res.json({ msg: "Cancelled" });
   } catch (err) {
     next(err);
   }
