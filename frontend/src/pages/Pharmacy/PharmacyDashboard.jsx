@@ -1,119 +1,102 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 
 export default function PharmacyDashboard() {
-  const [stats, setStats] = useState(null);
+  const [items, setItems] = useState([]);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStats();
+    loadPrescriptions();
   }, []);
 
-  const loadStats = async () => {
+  async function loadPrescriptions() {
+    setLoading(true);
     try {
-      const res = await apiFetch("/api/pharmacy/dashboard");
-      const data = await res.json();
-      setStats(data);
-    } catch (err) {
-      console.error(err);
+      const res = await apiFetch("/api/pharmacy/pending");
+      if (!res.ok) throw new Error();
+
+      setItems(await res.json());
+    } catch {
+      setError("Failed to load prescriptions");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  if (loading) return <p>Loading pharmacy dashboard...</p>;
+  async function dispense(encounterId, prescriptionId) {
+    if (!confirm("Confirm dispense?")) return;
+
+    try {
+      const res = await apiFetch("/api/pharmacy/dispense", {
+        method: "POST",
+        body: JSON.stringify({
+          encounterId,
+          prescriptionId,
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+
+      loadPrescriptions();
+    } catch {
+      alert("Dispense failed — workflow rejected");
+    }
+  }
 
   return (
-    <div className="dashboard">
-      <h1>💊 Pharmacy Dashboard</h1>
+    <div className="card premium-card">
+      <h2>Pharmacy</h2>
 
-      <div className="grid">
-        <Card
-          title="Pending Prescriptions"
-          value={stats.pendingPrescriptions}
-        />
-        <Card
-          title="Dispensed Today"
-          value={stats.dispensedToday}
-        />
-        <Card
-          title="Low Stock Items"
-          value={stats.lowStock}
-          danger
-        />
-        <Card
-          title="Total Medicines"
-          value={stats.totalMedicines}
-        />
-      </div>
+      {error && <div style={{ color: "red" }}>{error}</div>}
 
-      <div className="actions">
-        <Action label="View Prescriptions" to="/pharmacy/prescriptions" />
-        <Action label="Dispense Medicine" to="/pharmacy/dispense" />
-        <Action label="Inventory" to="/pharmacy/inventory" />
-        <Action label="Reports" to="/pharmacy/reports" />
-      </div>
-
-      <style>{`
-        .dashboard {
-          padding: 24px;
-        }
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-          gap: 16px;
-          margin-top: 24px;
-        }
-        .actions {
-          margin-top: 32px;
-          display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-      `}</style>
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <table className="table premium-table">
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Medication</th>
+              <th>Encounter</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {items.length ? (
+              items.map((p) => (
+                <tr key={p._id}>
+                  <td>{p.patient?.name}</td>
+                  <td>
+                    {p.medications.map((m, i) => (
+                      <div key={i}>
+                        {m.name} ({m.dosage})
+                      </div>
+                    ))}
+                  </td>
+                  <td>{p.encounter}</td>
+                  <td>
+                    <button
+                      className="button gradient-green"
+                      onClick={() =>
+                        dispense(p.encounter, p._id)
+                      }
+                    >
+                      Dispense
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" style={{ textAlign: "center" }}>
+                  No pending prescriptions
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
-  );
-}
-
-function Card({ title, value, danger }) {
-  return (
-    <div className={`card ${danger ? "danger" : ""}`}>
-      <h3>{title}</h3>
-      <strong>{value}</strong>
-
-      <style>{`
-        .card {
-          background: #fff;
-          padding: 20px;
-          border-radius: 14px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.06);
-        }
-        .card.danger strong {
-          color: #dc2626;
-        }
-        strong {
-          font-size: 28px;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function Action({ label, to }) {
-  return (
-    <a href={to} className="action">
-      {label}
-
-      <style>{`
-        .action {
-          padding: 12px 18px;
-          background: #0ea5e9;
-          color: white;
-          border-radius: 10px;
-          text-decoration: none;
-          font-weight: 600;
-        }
-      `}</style>
-    </a>
   );
 }
