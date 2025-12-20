@@ -1,11 +1,11 @@
-// labController - placeholder implementations
-import express from 'express';
+import { transitionEncounter } from "../services/workflowService.js";
+import { WORKFLOW } from "../constants/workflowStates.js";
 
-export const index = async (req, res) => {
-  res.json({ module: 'lab', status: 'ok', msg: 'Placeholder response' });
-};
+export const completeLab = async (req, res) => {
+  const encounter = await transitionEncounter(
+    req.body.encounterId,
+    WORKFLOW.LAB_COMPLETED
+  );
 
-// Example: list items
-export const list = async (req, res) => {
-  res.json([]);
+  res.json(encounter);
 };
