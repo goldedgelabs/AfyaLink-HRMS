@@ -1,11 +1,14 @@
-// pharmacyController - placeholder implementations
-import express from 'express';
+import { transitionEncounter } from "../services/workflowService.js";
+import { WORKFLOW } from "../constants/workflowStates.js";
 
-export const index = async (req, res) => {
-  res.json({ module: 'pharmacy', status: 'ok', msg: 'Placeholder response' });
-};
+export const dispenseMedication = async (req, res) => {
+  const { encounterId, prescriptionId } = req.body;
 
-// Example: list items
-export const list = async (req, res) => {
-  res.json([]);
+  const encounter = await transitionEncounter(
+    encounterId,
+    WORKFLOW.DISPENSED,
+    { prescriptionId }
+  );
+
+  res.json(encounter);
 };
