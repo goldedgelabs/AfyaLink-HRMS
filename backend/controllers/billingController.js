@@ -1,12 +1,9 @@
 import Transaction from "../models/Transaction.js";
-import Encounter from "../models/Encounter.js";
-import Report from "../models/Report.js";
 import PDFDocument from "pdfkit";
-import { transitionEncounter } from "../services/workflowService.js";
-import { WORKFLOW } from "../constants/workflowStates.js";
+import { workflowService } from "../services/workflowService.js";
 
 /* ======================================================
-   BILLING DASHBOARD (HOSPITAL-SCOPED)
+   BILLING DASHBOARD (SAFE)
 ====================================================== */
 export async function index(req, res) {
   const hospital = req.user.hospital;
@@ -29,7 +26,7 @@ export async function index(req, res) {
 }
 
 /* ======================================================
-   LIST TRANSACTIONS (TENANT SAFE)
+   LIST TRANSACTIONS
 ====================================================== */
 export async function list(req, res) {
   const tx = await Transaction.find({ hospital: req.user.hospital })
@@ -53,47 +50,53 @@ export async function getOne(req, res) {
 }
 
 /* ======================================================
-   MARK PAYMENT SUCCESS → WORKFLOW + RECEIPT + REPORT
+   CONFIRM PAYMENT (WORKFLOW-ONLY)
 ====================================================== */
-export async function markPaymentSuccess(req, res) {
-  const { transactionId } = req.body;
+export async function markPaymentSuccess(req, res, next) {
+  try {
+    const { workflowId, transactionId } = req.body;
 
-  const tx = await Transaction.findOne({
-    _id: transactionId,
-    hospital: req.user.hospital,
-  });
+    if (!workflowId || !transactionId) {
+      return res.status(400).json({
+        msg: "workflowId and transactionId required",
+      });
+    }
 
-  if (!tx) return res.status(404).json({ error: "Transaction not found" });
+    /**
+     * 🚨 SINGLE SOURCE OF TRUTH
+     */
+    const wf = await workflowService.transition(
+      "PAYMENT",
+      workflowId,
+      {
+        transactionId,
+        confirmedBy: req.user.id,
+        hospital: req.user.hospital,
+      }
+    );
 
-  tx.status = "success";
-  await tx.save();
-
-  // 🔁 Workflow transition
-  const encounter = await transitionEncounter(
-    tx.encounter,
-    WORKFLOW.PAID
-  );
-
-  // 🧾 Auto-generate financial report
-  await Report.create({
-    type: "PAYMENT_RECEIPT",
-    patient: tx.patient,
-    hospital: tx.hospital,
-    encounter: tx.encounter,
-    amount: tx.amount,
-    reference: tx.reference,
-    createdBy: req.user.id,
-  });
-
-  res.json({
-    message: "Payment confirmed",
-    transaction: tx,
-    encounter,
-  });
+    /**
+     * Effects guaranteed:
+     * - Transaction success
+     * - Receipt created
+     * - Ledger entry
+     * - Encounter PAID
+     * - Report generated
+     * - Audit logged
+     */
+    res.json({
+      status: "payment_confirmed",
+      transaction: wf.context.transaction,
+      receipt: wf.context.receipt,
+      encounter: wf.context.encounter,
+    });
+  } catch (err) {
+    next(err);
+  }
 }
 
 /* ======================================================
-   GENERATE INVOICE PDF (PRODUCTION GRADE)
+   GENERATE INVOICE PDF (READ-ONLY)
 ====================================================== */
 export async function invoicePdf(req, res) {
   const tx = await Transaction.findOne({
