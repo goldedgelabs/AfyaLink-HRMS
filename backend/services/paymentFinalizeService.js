@@ -27,7 +27,7 @@ export async function finalizePayment({
   /* ================= RECEIPT ================= */
   const receiptNo = `RCPT-${Date.now()}`;
 
-  const receipt = await Receipt.create({
+  const receipt = new Receipt({
     receiptNo,
     paymentId: payment._id,
     invoiceId: payment.invoice,
@@ -36,30 +36,40 @@ export async function finalizePayment({
     amount: payment.amount,
     currency: payment.currency,
     method: payment.method,
-    $locals: { viaWorkflow: true },
   });
 
+  receipt.$locals.viaWorkflow = true;
+  receipt.$locals.workflowId = workflowId;
+
+  await receipt.save();
+
   /* ================= LEDGER (SOURCE OF TRUTH) ================= */
-  await LedgerEntry.create({
+  const ledgerEntry = new LedgerEntry({
     type: "PAYMENT",
     amount: payment.amount,
     hospital: payment.hospital,
     patient: payment.patient,
     reference: receiptNo,
     source: payment.method,
-    $locals: { viaWorkflow: true },
   });
+
+  ledgerEntry.$locals.viaWorkflow = true;
+  ledgerEntry.$locals.workflowId = workflowId;
+
+  await ledgerEntry.save();
 
   /* ================= INVOICE ================= */
   if (payment.invoice) {
-    await Invoice.findByIdAndUpdate(
-      payment.invoice,
-      {
-        status: "Paid",
-        paidAt: new Date(),
-      },
-      { $locals: { viaWorkflow: true } }
-    );
+    const invoice = await Invoice.findById(payment.invoice);
+    if (!invoice) throw new Error("Invoice not found");
+
+    invoice.status = "Paid";
+    invoice.paidAt = new Date();
+
+    invoice.$locals.viaWorkflow = true;
+    invoice.$locals.workflowId = workflowId;
+
+    await invoice.save();
   }
 
   /* ================= WORKFLOW ================= */
