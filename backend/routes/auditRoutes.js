@@ -8,6 +8,7 @@ const router = express.Router();
 /**
  * GET /api/audit
  * Filters: actorId, action, resource, from, to
+ * RBAC: SuperAdmin / HospitalAdmin
  */
 router.get(
   "/",
@@ -26,32 +27,43 @@ router.get(
 
     const filter = {};
 
+    /* ================= FILTERS ================= */
     if (actorId) filter.actorId = actorId;
     if (action) filter.action = action;
     if (resource) filter.resource = resource;
+
     if (from || to) {
       filter.createdAt = {};
       if (from) filter.createdAt.$gte = new Date(from);
       if (to) filter.createdAt.$lte = new Date(to);
     }
 
-    // 🔐 Hospital isolation
-    if (req.user.role !== "SUPER_ADMIN") {
-      filter.hospital = req.user.hospitalId;
+    /* ================= TENANCY ISOLATION ================= */
+    if (req.user.role !== "SuperAdmin") {
+      filter.hospital = req.user.hospital;
     }
 
-    const logs = await AuditLog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .populate("actorId", "name email");
+    /* ================= PAGINATION SAFETY ================= */
+    const safeLimit = Math.min(Number(limit) || 50, 100);
+    const skip = (Number(page) - 1) * safeLimit;
 
-    const total = await AuditLog.countDocuments(filter);
+    /* ================= QUERY ================= */
+    const [logs, total] = await Promise.all([
+      AuditLog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(safeLimit)
+        .populate("actorId", "name email role")
+        .lean(),
+
+      AuditLog.countDocuments(filter),
+    ]);
 
     res.json({
       data: logs,
       total,
       page: Number(page),
+      pageSize: safeLimit,
     });
   }
 );
