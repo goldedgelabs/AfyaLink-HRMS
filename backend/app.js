@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import workflowRoutes from "./routes/workflowRoutes.js";
 import dotenv from "dotenv";
 import dotenvExpand from "dotenv-expand";
 
@@ -91,6 +92,7 @@ app.use(
 app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
+app.use("/api/workflows", workflowRoutes);
 
 // =======================================================
 // 🔐 AUTO-AUDIT FLAG (ALL MUTATIONS)
