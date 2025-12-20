@@ -1,9 +1,11 @@
-import { finalizePayment } from "../services/paymentFinalizeService.js";
+import { transitionEncounter } from "../services/workflowService.js";
+import { WORKFLOW } from "../constants/workflowStates.js";
 
-// After payment confirmation
-const receipt = await finalizePayment({
-  payment,
-  invoice,
-});
+export const markPaid = async (req, res) => {
+  const encounter = await transitionEncounter(
+    req.body.encounterId,
+    WORKFLOW.PAID
+  );
 
-// OPTIONAL: notify patient
+  res.json(encounter);
+};
