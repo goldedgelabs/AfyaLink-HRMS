@@ -1,21 +1,26 @@
-import Workflow from "../models/Workflow.js";
-import { transitionWorkflow } from "../services/workflowEngine.js";
+import Encounter from "../models/Encounter.js";
+import { transitionEncounter } from "../services/workflowService.js";
+import { WORKFLOW } from "../constants/workflowStates.js";
 
-export const completeConsultation = async (req, res) => {
-  const wf = await Workflow.create({
+export const startConsultation = async (req, res) => {
+  const encounter = await Encounter.create({
     patient: req.body.patient,
-    appointment: req.body.appointment,
+    doctor: req.user.id,
     hospital: req.user.hospital,
-    state: "CONSULTATION",
-    history: [{ state: "CONSULTATION", at: new Date(), by: req.user.id }],
+    appointment: req.body.appointment,
   });
 
-  const updated = await transitionWorkflow({
-    workflowId: wf.id,
-    to: "LAB_ORDERED",
-    actor: req.user,
-    ctx: { tests: req.body.tests },
-  });
+  res.status(201).json(encounter);
+};
 
-  res.json(updated);
+export const orderLab = async (req, res) => {
+  const { encounterId, labOrderId } = req.body;
+
+  const encounter = await transitionEncounter(
+    encounterId,
+    WORKFLOW.LAB_ORDERED,
+    { labOrderId }
+  );
+
+  res.json(encounter);
 };
