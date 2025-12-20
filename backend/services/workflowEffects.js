@@ -1,28 +1,82 @@
-import { createLabOrder } from "./labService.js";
-import { createPrescription } from "./pharmacyService.js";
-import { createInvoice } from "./billingService.js";
+import { workflowService } from "./workflowService.js";
 import { notifyPatient } from "./notificationService.js";
 
-export async function triggerSideEffects(state, wf, ctx) {
+/**
+ * SIDE EFFECTS
+ * -----------------------------
+ * - No direct DB writes
+ * - No business rules
+ * - No financial artifacts
+ * - Deterministic & replayable
+ */
+export async function triggerSideEffects(state, wf, ctx = {}) {
+  const baseContext = {
+    hospital: wf.hospital,
+    triggeredBy: wf.lastActor,
+    parentWorkflow: wf.id,
+  };
+
   switch (state) {
-    case "LAB_ORDERED":
-      await createLabOrder(wf.patient, ctx.tests);
+    /* ======================================================
+       LAB ORDERED → START LAB WORKFLOW
+    ====================================================== */
+    case "LAB_ORDERED": {
+      await workflowService.start("LAB", {
+        ...baseContext,
+        patient: wf.patient,
+        encounter: wf.context.encounterId,
+        tests: ctx.tests,
+      });
       break;
+    }
 
-    case "LAB_COMPLETED":
-      await notifyPatient(wf.patient, "Lab results ready");
+    /* ======================================================
+       LAB COMPLETED → NOTIFY ONLY
+    ====================================================== */
+    case "LAB_COMPLETED": {
+      await notifyPatient(wf.patient, "Lab results are ready");
       break;
+    }
 
-    case "PRESCRIPTION_CREATED":
-      await createPrescription(wf.patient, ctx.meds);
+    /* ======================================================
+       PRESCRIPTION CREATED → START PHARMACY WORKFLOW
+    ====================================================== */
+    case "PRESCRIPTION_CREATED": {
+      await workflowService.start("PHARMACY", {
+        ...baseContext,
+        patient: wf.patient,
+        prescriptionId: ctx.prescriptionId,
+      });
       break;
+    }
 
-    case "DISPENSED":
-      await createInvoice(wf.patient, ctx.amount);
+    /* ======================================================
+       DISPENSED → START BILLING WORKFLOW
+    ====================================================== */
+    case "DISPENSED": {
+      await workflowService.start("BILLING", {
+        ...baseContext,
+        patient: wf.patient,
+        encounter: wf.context.encounterId,
+        lineItems: ctx.billingItems,
+        source: "PHARMACY",
+      });
       break;
+    }
 
-    case "PAID":
-      await notifyPatient(wf.patient, "Payment received");
+    /* ======================================================
+       PAID → NOTIFY + CLOSE LOOP
+    ====================================================== */
+    case "PAID": {
+      await notifyPatient(
+        wf.patient,
+        "Payment received. Thank you."
+      );
+      break;
+    }
+
+    default:
+      // No-op by design (safe for replay)
       break;
   }
 }
