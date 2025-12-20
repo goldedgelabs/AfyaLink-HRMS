@@ -97,18 +97,7 @@
   text-decoration: none;
 }
 
-.demo-box {
-  margin-top: 24px;
-  background: #f8fafc;
-  padding: 14px;
-  border-radius: 10px;
-  font-size: 13px;
-}
 
-.demo-box ul {
-  margin: 8px 0 0;
-  padding-left: 18px;
-}
 
 .error {
   background: #fee2e2;
