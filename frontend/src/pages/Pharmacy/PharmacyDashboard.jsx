@@ -1,31 +1,39 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 
+/**
+ * PHARMACY DASHBOARD — WORKFLOW ENFORCED
+ * - Inventory + billing protected
+ * - Backend is single source of truth
+ */
+
 export default function PharmacyDashboard() {
-  const [items, setItems] = useState([]);
-  const [error, setError] = useState("");
+  const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    loadPrescriptions();
+    loadQueue();
   }, []);
 
-  async function loadPrescriptions() {
+  async function loadQueue() {
     setLoading(true);
+    setMsg("");
+
     try {
-      const res = await apiFetch("/api/pharmacy/pending");
+      const res = await apiFetch("/api/encounters?stage=PHARMACY");
       if (!res.ok) throw new Error();
 
-      setItems(await res.json());
+      setQueue(await res.json());
     } catch {
-      setError("Failed to load prescriptions");
+      setMsg("Failed to load pharmacy queue");
     } finally {
       setLoading(false);
     }
   }
 
   async function dispense(encounterId, prescriptionId) {
-    if (!confirm("Confirm dispense?")) return;
+    setMsg("");
 
     try {
       const res = await apiFetch("/api/pharmacy/dispense", {
@@ -36,66 +44,60 @@ export default function PharmacyDashboard() {
         }),
       });
 
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Dispense failed");
+      }
 
-      loadPrescriptions();
-    } catch {
-      alert("Dispense failed — workflow rejected");
+      await loadQueue();
+    } catch (err) {
+      setMsg(err.message);
     }
   }
 
   return (
     <div className="card premium-card">
-      <h2>Pharmacy</h2>
+      <h2>Pharmacy Queue</h2>
 
-      {error && <div style={{ color: "red" }}>{error}</div>}
+      {msg && (
+        <div style={{ color: "red", marginBottom: 12 }}>{msg}</div>
+      )}
 
       {loading ? (
         <div>Loading...</div>
-      ) : (
+      ) : queue.length ? (
         <table className="table premium-table">
           <thead>
             <tr>
               <th>Patient</th>
-              <th>Medication</th>
-              <th>Encounter</th>
-              <th />
+              <th>Medications</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {items.length ? (
-              items.map((p) => (
-                <tr key={p._id}>
-                  <td>{p.patient?.name}</td>
-                  <td>
-                    {p.medications.map((m, i) => (
-                      <div key={i}>
-                        {m.name} ({m.dosage})
-                      </div>
-                    ))}
-                  </td>
-                  <td>{p.encounter}</td>
-                  <td>
-                    <button
-                      className="button gradient-green"
-                      onClick={() =>
-                        dispense(p.encounter, p._id)
-                      }
-                    >
-                      Dispense
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" style={{ textAlign: "center" }}>
-                  No pending prescriptions
+            {queue.map((e) => (
+              <tr key={e._id}>
+                <td>{e.patient?.name}</td>
+                <td>{e.prescriptions?.length || 0}</td>
+                <td>{e.state}</td>
+                <td>
+                  <button
+                    className="button gradient-green"
+                    disabled={e.state !== "PRESCRIPTION_READY"}
+                    onClick={() =>
+                      dispense(e._id, e.prescriptions?.[0])
+                    }
+                  >
+                    Dispense
+                  </button>
                 </td>
               </tr>
-            )}
+            ))}
           </tbody>
         </table>
+      ) : (
+        <div>No prescriptions pending</div>
       )}
     </div>
   );
