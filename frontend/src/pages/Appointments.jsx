@@ -11,7 +11,6 @@ export default function Appointments() {
     date: "",
     reason: "",
   });
-  const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -19,7 +18,7 @@ export default function Appointments() {
     loadAll();
   }, []);
 
-  const loadAll = async () => {
+  async function loadAll() {
     setLoading(true);
     setErr("");
     try {
@@ -45,42 +44,32 @@ export default function Appointments() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const submit = async (e) => {
+  async function submit(e) {
     e.preventDefault();
     setErr("");
 
     try {
-      const res = editing
-        ? await apiFetch(`/api/appointments/${editing}`, {
-            method: "PUT",
-            body: JSON.stringify(form),
-          })
-        : await apiFetch("/api/appointments", {
-            method: "POST",
-            body: JSON.stringify(form),
-          });
+      const res = await apiFetch("/api/appointments", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
 
       if (!res.ok) throw new Error();
 
-      setForm({ patient: "", doctor: "", date: "", reason: "" });
-      setEditing(null);
+      setForm({
+        patient: "",
+        doctor: "",
+        date: "",
+        reason: "",
+      });
+
       loadAll();
     } catch {
-      setErr("Failed to save appointment");
+      setErr("Failed to create appointment");
     }
-  };
-
-  const startEdit = (a) => {
-    setEditing(a._id);
-    setForm({
-      patient: a.patient?._id || "",
-      doctor: a.doctor?._id || "",
-      date: a.date?.substring(0, 16) || "",
-      reason: a.reason || "",
-    });
-  };
+  }
 
   return (
     <div className="card premium-card">
@@ -88,9 +77,9 @@ export default function Appointments() {
 
       {err && <div style={{ color: "red", marginBottom: 12 }}>{err}</div>}
 
-      {/* ===== FORM ===== */}
+      {/* ===== CREATE FORM (WRITE-ONCE) ===== */}
       <form onSubmit={submit} className="card appointment-form">
-        <h3>{editing ? "Update Appointment" : "Create Appointment"}</h3>
+        <h3>Create Appointment</h3>
 
         <label>Patient</label>
         <select
@@ -135,32 +124,12 @@ export default function Appointments() {
           required
         />
 
-        <div className="form-buttons">
-          <button className="button gradient-blue" type="submit">
-            {editing ? "Update" : "Create"}
-          </button>
-
-          {editing && (
-            <button
-              className="button cancel-btn"
-              type="button"
-              onClick={() => {
-                setEditing(null);
-                setForm({
-                  patient: "",
-                  doctor: "",
-                  date: "",
-                  reason: "",
-                });
-              }}
-            >
-              Cancel
-            </button>
-          )}
-        </div>
+        <button className="button gradient-blue" type="submit">
+          Create Appointment
+        </button>
       </form>
 
-      {/* ===== LIST ===== */}
+      {/* ===== READ-ONLY LIST ===== */}
       {loading ? (
         <div className="premium-card" style={{ textAlign: "center" }}>
           Loading...
@@ -173,7 +142,6 @@ export default function Appointments() {
               <th>Doctor</th>
               <th>Date</th>
               <th>Reason</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -184,19 +152,11 @@ export default function Appointments() {
                   <td>{a.doctor?.name}</td>
                   <td>{new Date(a.date).toLocaleString()}</td>
                   <td>{a.reason}</td>
-                  <td>
-                    <button
-                      className="button gradient-purple"
-                      onClick={() => startEdit(a)}
-                    >
-                      ✏️
-                    </button>
-                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="5" style={{ textAlign: "center" }}>
+                <td colSpan="4" style={{ textAlign: "center" }}>
                   No appointments found.
                 </td>
               </tr>
