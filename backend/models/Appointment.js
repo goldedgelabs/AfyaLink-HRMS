@@ -2,6 +2,17 @@ import mongoose from "mongoose";
 const { Schema, model } = mongoose;
 
 /* ======================================================
+   HARD WORKFLOW ASSERTION (NON-NEGOTIABLE)
+====================================================== */
+function assertWorkflowContext(doc) {
+  if (!doc.$locals?.viaWorkflow) {
+    throw new Error(
+      "SECURITY VIOLATION: Appointment mutation must occur via workflowService"
+    );
+  }
+}
+
+/* ======================================================
    APPOINTMENT SCHEMA (ENTERPRISE-GRADE)
 ====================================================== */
 const appointmentSchema = new Schema(
@@ -151,15 +162,48 @@ appointmentSchema.index(
 );
 
 /* ======================================================
-   PRE-SAVE GUARDS
+   HARD WORKFLOW ENFORCEMENT
 ====================================================== */
+
+// CREATE
 appointmentSchema.pre("save", function (next) {
-  // Cancel timestamp auto-set
+  if (this.isNew) {
+    assertWorkflowContext(this);
+  }
+
+  // Domain rule (allowed)
   if (this.isModified("status") && this.status === "Cancelled") {
     this.cancelledAt = new Date();
   }
+
   next();
 });
+
+// UPDATE (findOneAndUpdate, updateOne, etc.)
+appointmentSchema.pre(
+  ["findOneAndUpdate", "updateOne", "updateMany"],
+  function (next) {
+    if (!this.getOptions()?.viaWorkflow) {
+      throw new Error(
+        "SECURITY VIOLATION: Appointment update must occur via workflowService"
+      );
+    }
+    next();
+  }
+);
+
+// DELETE
+appointmentSchema.pre(
+  ["deleteOne", "findOneAndDelete"],
+  function (next) {
+    if (!this.getOptions()?.viaWorkflow) {
+      throw new Error(
+        "SECURITY VIOLATION: Appointment deletion must occur via workflowService"
+      );
+    }
+    next();
+  }
+);
 
 /* ======================================================
    SAFE EXPORT
