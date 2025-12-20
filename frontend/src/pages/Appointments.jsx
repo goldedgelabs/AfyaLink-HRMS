@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { apiFetch } from "../utils/auth";
+import { apiFetch } from "../utils/apiFetch";
 
 export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
@@ -8,11 +8,11 @@ export default function Appointments() {
   const [form, setForm] = useState({
     patient: "",
     doctor: "",
-    date: "",
+    scheduledAt: "",
     reason: "",
   });
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadAll();
@@ -20,35 +20,28 @@ export default function Appointments() {
 
   async function loadAll() {
     setLoading(true);
-    setErr("");
     try {
-      const [aRes, pRes, uRes] = await Promise.all([
+      const [a, p, u] = await Promise.all([
         apiFetch("/api/appointments"),
         apiFetch("/api/patients"),
         apiFetch("/api/auth/users"),
       ]);
 
-      if (!aRes.ok || !pRes.ok || !uRes.ok) {
-        throw new Error();
-      }
+      if (!a.ok || !p.ok || !u.ok) throw new Error();
 
-      const appointmentsData = await aRes.json();
-      const patientsData = await pRes.json();
-      const usersData = await uRes.json();
-
-      setAppointments(appointmentsData);
-      setPatients(patientsData);
-      setDoctors(usersData.filter((u) => u.role === "doctor"));
+      setAppointments(await a.json());
+      setPatients(await p.json());
+      setDoctors((await u.json()).filter((x) => x.role === "doctor"));
     } catch {
-      setErr("Failed to load data");
+      setError("Failed to load appointments");
     } finally {
       setLoading(false);
     }
   }
 
-  async function submit(e) {
+  async function createAppointment(e) {
     e.preventDefault();
-    setErr("");
+    setError("");
 
     try {
       const res = await apiFetch("/api/appointments", {
@@ -58,16 +51,25 @@ export default function Appointments() {
 
       if (!res.ok) throw new Error();
 
-      setForm({
-        patient: "",
-        doctor: "",
-        date: "",
-        reason: "",
-      });
-
+      setForm({ patient: "", doctor: "", scheduledAt: "", reason: "" });
       loadAll();
     } catch {
-      setErr("Failed to create appointment");
+      setError("Failed to create appointment");
+    }
+  }
+
+  async function cancelAppointment(id) {
+    if (!confirm("Cancel appointment?")) return;
+
+    try {
+      const res = await apiFetch(`/api/appointments/${id}/cancel`, {
+        method: "POST",
+      });
+
+      if (!res.ok) throw new Error();
+      loadAll();
+    } catch {
+      alert("Cancellation failed");
     }
   }
 
@@ -75,19 +77,17 @@ export default function Appointments() {
     <div className="card premium-card">
       <h2>Appointments</h2>
 
-      {err && <div style={{ color: "red", marginBottom: 12 }}>{err}</div>}
+      {error && <div style={{ color: "red" }}>{error}</div>}
 
-      {/* ===== CREATE FORM (WRITE-ONCE) ===== */}
-      <form onSubmit={submit} className="card appointment-form">
-        <h3>Create Appointment</h3>
+      <form onSubmit={createAppointment} className="card appointment-form">
+        <h3>Schedule Appointment</h3>
 
-        <label>Patient</label>
         <select
           value={form.patient}
           onChange={(e) => setForm({ ...form, patient: e.target.value })}
           required
         >
-          <option value="">-- Select Patient --</option>
+          <option value="">Select patient</option>
           {patients.map((p) => (
             <option key={p._id} value={p._id}>
               {p.name}
@@ -95,13 +95,12 @@ export default function Appointments() {
           ))}
         </select>
 
-        <label>Doctor</label>
         <select
           value={form.doctor}
           onChange={(e) => setForm({ ...form, doctor: e.target.value })}
           required
         >
-          <option value="">-- Select Doctor --</option>
+          <option value="">Select doctor</option>
           {doctors.map((d) => (
             <option key={d._id} value={d._id}>
               {d.name}
@@ -109,31 +108,27 @@ export default function Appointments() {
           ))}
         </select>
 
-        <label>Date & Time</label>
         <input
           type="datetime-local"
-          value={form.date}
-          onChange={(e) => setForm({ ...form, date: e.target.value })}
+          value={form.scheduledAt}
+          onChange={(e) =>
+            setForm({ ...form, scheduledAt: e.target.value })
+          }
           required
         />
 
-        <label>Reason</label>
         <input
+          placeholder="Reason"
           value={form.reason}
           onChange={(e) => setForm({ ...form, reason: e.target.value })}
           required
         />
 
-        <button className="button gradient-blue" type="submit">
-          Create Appointment
-        </button>
+        <button className="button gradient-blue">Schedule</button>
       </form>
 
-      {/* ===== READ-ONLY LIST ===== */}
       {loading ? (
-        <div className="premium-card" style={{ textAlign: "center" }}>
-          Loading...
-        </div>
+        <div>Loading...</div>
       ) : (
         <table className="table premium-table">
           <thead>
@@ -141,26 +136,29 @@ export default function Appointments() {
               <th>Patient</th>
               <th>Doctor</th>
               <th>Date</th>
-              <th>Reason</th>
+              <th>Status</th>
+              <th />
             </tr>
           </thead>
           <tbody>
-            {appointments.length > 0 ? (
-              appointments.map((a) => (
-                <tr key={a._id}>
-                  <td>{a.patient?.name}</td>
-                  <td>{a.doctor?.name}</td>
-                  <td>{new Date(a.date).toLocaleString()}</td>
-                  <td>{a.reason}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" style={{ textAlign: "center" }}>
-                  No appointments found.
+            {appointments.map((a) => (
+              <tr key={a._id}>
+                <td>{a.patient?.name}</td>
+                <td>{a.doctor?.name}</td>
+                <td>{new Date(a.scheduledAt).toLocaleString()}</td>
+                <td>{a.status}</td>
+                <td>
+                  {a.status === "Scheduled" && (
+                    <button
+                      className="button cancel-btn"
+                      onClick={() => cancelAppointment(a._id)}
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </td>
               </tr>
-            )}
+            ))}
           </tbody>
         </table>
       )}
