@@ -84,6 +84,11 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+// =======================================================
+// insurance
+// =======================================================
+app.use("/api/insurance", insuranceRoutes);
+
 
 // =======================================================
 // CORE MIDDLEWARE
