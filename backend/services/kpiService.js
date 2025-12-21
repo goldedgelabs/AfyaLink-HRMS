@@ -1,65 +1,100 @@
 import Encounter from "../models/Encounter.js";
 import Transaction from "../models/Transaction.js";
 import InsuranceAuthorization from "../models/InsuranceAuthorization.js";
+import Workflow from "../models/Workflow.js";
 
 /**
  * ADMIN — HOSPITAL KPI SNAPSHOT
- * 🔒 READ ONLY
+ * 🔒 Admin only
+ * 📊 Read-only
+ * 🏥 Hospital isolated
  */
 export async function hospitalKPIs(req, res, next) {
   try {
+    const actor = req.user;
+
+    /* ===========================
+       ACCESS CONTROL
+    ============================ */
+    if (actor.role !== "ADMIN") {
+      return res.status(403).json({ error: "Admin only" });
+    }
+
+    const hospital = actor.hospitalId;
+
     /* ===========================
        ENCOUNTERS
     ============================ */
-    const totalEncounters = await Encounter.countDocuments();
-
-    const activeEncounters = await Encounter.countDocuments({
-      "workflow.state": { $ne: "COMPLETED" },
+    const totalEncounters = await Encounter.countDocuments({
+      hospital,
     });
 
-    const completedEncounters = await Encounter.countDocuments({
-      "workflow.state": "COMPLETED",
+    const completedEncounters = await Workflow.countDocuments({
+      hospital,
+      state: "COMPLETED",
     });
+
+    const activeEncounters =
+      totalEncounters - completedEncounters;
 
     /* ===========================
        INSURANCE — SHA
     ============================ */
     const insurancePending = await InsuranceAuthorization.countDocuments({
+      hospital,
       provider: "SHA",
       status: "PENDING",
     });
 
     const insuranceApproved = await InsuranceAuthorization.countDocuments({
+      hospital,
       provider: "SHA",
       status: "APPROVED",
     });
 
     const insuranceRejected = await InsuranceAuthorization.countDocuments({
+      hospital,
       provider: "SHA",
       status: "REJECTED",
     });
 
     /* ===========================
-       CLINICAL FLOW
+       CLINICAL FLOW (WORKFLOW AUTHORITY)
     ============================ */
-    const labPending = await Encounter.countDocuments({
-      "workflow.state": "LAB_PENDING",
+    const labPending = await Workflow.countDocuments({
+      hospital,
+      state: "LAB_PENDING",
     });
 
-    const pharmacyPending = await Encounter.countDocuments({
-      "workflow.state": "PHARMACY_PENDING",
+    const pharmacyPending = await Workflow.countDocuments({
+      hospital,
+      state: "PRESCRIPTION_READY",
     });
 
     /* ===========================
        BILLING
     ============================ */
     const revenueAgg = await Transaction.aggregate([
-      { $match: { "workflow.state": "PAID" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
+      {
+        $match: {
+          hospital,
+          "workflow.state": "PAID",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" },
+        },
+      },
     ]);
 
+    const totalRevenue =
+      revenueAgg.length > 0 ? revenueAgg[0].total : 0;
+
     const pendingPayments = await Transaction.countDocuments({
-      "workflow.state": "PAYMENT_PENDING",
+      hospital,
+      "workflow.state": { $ne: "PAID" },
     });
 
     /* ===========================
@@ -85,7 +120,7 @@ export async function hospitalKPIs(req, res, next) {
       },
 
       billing: {
-        totalRevenue: revenueAgg[0]?.total || 0,
+        totalRevenue,
         pendingPayments,
       },
     });
