@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
+import WorkflowTimeline from "../../components/workflow/WorkflowTimeline";
 
 /**
  * LAB DASHBOARD — WORKFLOW ENFORCED
- * - No direct state mutation
- * - Backend is authority
+ * Backend is the ONLY authority
  */
 
 export default function LabDashboard() {
@@ -36,9 +36,9 @@ export default function LabDashboard() {
     setMsg("");
 
     try {
-      const res = await apiFetch("/api/lab/complete", {
+      const res = await apiFetch("/api/labs/complete", {
         method: "POST",
-        body: JSON.stringify({ encounterId }),
+        body: { encounterId },
       });
 
       if (!res.ok) {
@@ -70,25 +70,36 @@ export default function LabDashboard() {
               <th>Tests</th>
               <th>Status</th>
               <th>Action</th>
+              <th>Workflow</th>
             </tr>
           </thead>
           <tbody>
-            {encounters.map((e) => (
-              <tr key={e._id}>
-                <td>{e.patient?.name}</td>
-                <td>{e.labOrders?.length || 0}</td>
-                <td>{e.state}</td>
-                <td>
-                  <button
-                    className="button gradient-green"
-                    disabled={e.state !== "LAB_PENDING"}
-                    onClick={() => completeLab(e._id)}
-                  >
-                    Complete Lab
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {encounters.map((e) => {
+              const canCompleteLab =
+                e.workflow?.allowedTransitions?.includes("LAB_COMPLETED");
+
+              return (
+                <tr key={e._id}>
+                  <td>{e.patient?.name}</td>
+                  <td>{e.labOrders?.length || 0}</td>
+                  <td>{e.workflow?.state}</td>
+
+                  <td>
+                    <button
+                      className="button gradient-green"
+                      disabled={!canCompleteLab}
+                      onClick={() => completeLab(e._id)}
+                    >
+                      Complete Lab
+                    </button>
+                  </td>
+
+                  <td style={{ minWidth: 280 }}>
+                    <WorkflowTimeline encounterId={e._id} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       ) : (
