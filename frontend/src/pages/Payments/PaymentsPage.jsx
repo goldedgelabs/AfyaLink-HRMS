@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 import { useAuth } from "../../utils/auth";
 import WorkflowTimeline from "../../components/workflow/WorkflowTimeline";
+import WorkflowBadge from "../../components/workflow/WorkflowBadge";
 
 /**
  * PAYMENTS PAGE — WORKFLOW ENFORCED
@@ -58,7 +59,8 @@ export default function PaymentsPage() {
       );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Stripe failed");
+      if (!res.ok)
+        throw new Error(data.error || "Stripe failed");
 
       setMsg(
         "Stripe Payment Intent created.\nClient Secret:\n" +
@@ -102,7 +104,8 @@ export default function PaymentsPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "M-Pesa failed");
+      if (!res.ok)
+        throw new Error(data.error || "M-Pesa failed");
 
       setMsg("M-Pesa STK Push sent. Await confirmation.");
     } catch (err) {
@@ -147,15 +150,22 @@ export default function PaymentsPage() {
           {transactions.length ? (
             transactions.map((tx) => {
               const canPay =
-                tx.workflow?.allowedTransitions?.includes("PAID");
+                tx.workflow?.allowedTransitions?.includes(
+                  "PAID"
+                );
 
               return (
                 <tr key={tx._id}>
                   <td>{tx.patient?.name || "—"}</td>
-                  <td>{tx.amount} {tx.currency}</td>
-
                   <td>
-                    <strong>{tx.workflow?.state}</strong>
+                    {tx.amount} {tx.currency}
+                  </td>
+
+                  {/* ✅ VISUAL WORKFLOW BADGE */}
+                  <td>
+                    <WorkflowBadge
+                      state={tx.workflow?.state}
+                    />
                   </td>
 
                   <td>
@@ -176,14 +186,19 @@ export default function PaymentsPage() {
                   </td>
 
                   <td style={{ minWidth: 280 }}>
-                    <WorkflowTimeline encounterId={tx.encounter} />
+                    <WorkflowTimeline
+                      encounterId={tx.encounter}
+                    />
                   </td>
                 </tr>
               );
             })
           ) : (
             <tr>
-              <td colSpan="5" style={{ textAlign: "center" }}>
+              <td
+                colSpan="5"
+                style={{ textAlign: "center" }}
+              >
                 No pending payments
               </td>
             </tr>
