@@ -1,30 +1,23 @@
-import Mapping from '../models/Mapping.js';
+import Workflow from "../models/Workflow.js";
+import LabOrder from "../models/LabOrder.js";
+import { assertWorkflowState } from "../services/clinicalWorkflowGuard.js";
 
-export async function createMapping(req,res){
-  const payload = req.body;
-  payload.createdBy = req.user?._id;
-  const m = await Mapping.create(payload);
-  res.json(m);
-}
+export async function orderLab(req, res) {
+  const { encounterId, tests } = req.body;
 
-export async function listMappings(req,res){
-  const list = await Mapping.find({}).lean();
-  res.json(list);
-}
+  const workflow = await Workflow.findOne({ encounter: encounterId });
 
-export async function getMapping(req,res){
-  const m = await Mapping.findById(req.params.id).lean();
-  res.json(m);
-}
+  assertWorkflowState(workflow, ["DIAGNOSED"]);
 
-export async function updateMapping(req,res){
-  const upd = req.body;
-  upd.updatedAt = new Date();
-  const m = await Mapping.findByIdAndUpdate(req.params.id, upd, { new:true }).lean();
-  res.json(m);
-}
+  const lab = await LabOrder.create({
+    encounter: encounterId,
+    tests,
+    orderedBy: req.user._id,
+    hospital: req.user.hospital,
+    $locals: { viaWorkflow: true },
+  });
 
-export async function deleteMapping(req,res){
-  await Mapping.findByIdAndDelete(req.params.id);
-  res.json({ ok:true });
+  await workflow.transition("LAB_ORDERED", req.user);
+
+  res.json(lab);
 }
