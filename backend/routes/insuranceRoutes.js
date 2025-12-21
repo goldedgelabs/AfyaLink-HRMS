@@ -1,14 +1,17 @@
 import express from "express";
-import { requestNhifAuthorization } from "../controllers/insuranceController.js";
-import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+import { shaPreauthorize } from "../controllers/insuranceController.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+/**
+ * INSURANCE ROUTES — READ/WRITE
+ */
+
 router.post(
-  "/nhif/preauth",
+  "/sha/preauth",
   requireAuth,
-  requireRole("billing"),
-  requestNhifAuthorization
+  shaPreauthorize
 );
 
 export default router;
