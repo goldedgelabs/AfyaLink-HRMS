@@ -59,6 +59,7 @@ import insuranceRoutes from "./routes/insuranceRoutes.js";
 // 🔐 WORKFLOW (READ-ONLY)
 import workflowRoutes from "./routes/workflowRoutes.js";
 import workflowAdminRoutes from "./routes/workflowAdminRoutes.js";
+import adminWorkflowRoutes from "./routes/adminWorkflowRoutes.js";
 
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -104,7 +105,7 @@ app.use(morgan("dev"));
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/workflows/admin", workflowAdminRoutes);
 app.use("/api/workflows/replay", workflowReplayRoutes);
-
+app.use("/api/admin/workflows", adminWorkflowRoutes);
 
 // =======================================================
 // AUTO-AUDIT FLAG (ALL MUTATIONS)
