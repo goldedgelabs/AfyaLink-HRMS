@@ -63,6 +63,8 @@ import errorHandler from "./middleware/errorHandler.js";
 
 // Workers
 import "./workers/notificationWorker.js";
+import "./workers/workflowSlaWorker.js";
+
 
 const app = express();
 
