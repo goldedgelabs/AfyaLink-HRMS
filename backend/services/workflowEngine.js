@@ -9,7 +9,7 @@ import { triggerSideEffects } from "./workflowEffects.js";
 export async function startWorkflow({
   type,
   initialState,
-  context,
+  context = {},
   actor,
   hospital,
 }) {
@@ -33,10 +33,14 @@ export async function startWorkflow({
     action: "WORKFLOW_START",
     resource: "workflow",
     resourceId: wf.id,
-    after: { state: initialState, type },
+    after: {
+      type,
+      state: initialState,
+    },
     hospital,
   });
 
+  // Side effects must NEVER mutate state
   await triggerSideEffects(initialState, wf, context);
 
   return wf;
@@ -44,6 +48,7 @@ export async function startWorkflow({
 
 /* ======================================================
    TRANSITION WORKFLOW (ONLY STATE MUTATION)
+   🔐 Backend is the single authority
 ====================================================== */
 export async function transitionWorkflow({
   workflowId,
@@ -52,51 +57,88 @@ export async function transitionWorkflow({
   ctx = {},
 }) {
   const wf = await Workflow.findById(workflowId);
-  if (!wf) throw new Error("Workflow not found");
+  if (!wf) {
+    throw new Error("Workflow not found");
+  }
 
-  // 🔐 Hospital isolation
+  /* ----------------------------------
+     🔐 Hospital isolation
+  ---------------------------------- */
   if (String(wf.hospital) !== String(actor.hospitalId)) {
     throw new Error("Cross-hospital workflow access denied");
   }
 
-  // 🛑 Idempotency guard
-  if (wf.state === to) return wf;
-
-  const allowed = WORKFLOW_TRANSITIONS[wf.state] || [];
-  if (!allowed.includes(to)) {
-    throw new Error(`Invalid transition ${wf.state} → ${to}`);
+  /* ----------------------------------
+     🛑 Idempotency guard
+     (double clicks / retries safe)
+  ---------------------------------- */
+  if (wf.state === to) {
+    return wf;
   }
 
+  /* ----------------------------------
+     ✅ Transition validation
+  ---------------------------------- */
+  const allowed = WORKFLOW_TRANSITIONS[wf.state] || [];
+  if (!allowed.includes(to)) {
+    throw new Error(
+      `Invalid workflow transition: ${wf.state} → ${to}`
+    );
+  }
+
+  /* ----------------------------------
+     🚦 Commit transition
+  ---------------------------------- */
   wf.state = to;
-  wf.context = { ...wf.context, ...ctx };
-  wf.history.push({ state: to, at: new Date(), by: actor.id });
+  wf.context = {
+    ...wf.context,
+    ...ctx,
+  };
+  wf.history.push({
+    state: to,
+    at: new Date(),
+    by: actor.id,
+  });
 
   await wf.save();
 
+  /* ----------------------------------
+     🧾 Audit log
+  ---------------------------------- */
   await logAudit({
     actorId: actor.id,
     actorRole: actor.role,
     action: "WORKFLOW_TRANSITION",
     resource: "workflow",
     resourceId: wf.id,
-    after: { state: to },
+    before: {
+      state: wf.history.at(-2)?.state,
+    },
+    after: {
+      state: to,
+    },
     hospital: wf.hospital,
   });
 
+  /* ----------------------------------
+     ⚡ Side effects (async, safe)
+  ---------------------------------- */
   await triggerSideEffects(to, wf, wf.context);
 
   return wf;
 }
 
 /* ======================================================
-   COMPLETE WORKFLOW (TERMINAL STATE)
+   COMPLETE WORKFLOW (TERMINAL)
 ====================================================== */
 export async function completeWorkflow({
   workflowId,
   actor,
 }) {
   const wf = await Workflow.findById(workflowId);
-  if (!wf) throw new Error("Workflow not found");
+  if (!wf) {
+    throw new Error("Workflow not found");
+  }
 
   wf.completedAt = new Date();
   await wf.save();
