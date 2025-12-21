@@ -97,6 +97,8 @@ app.use(morgan("dev"));
 // =======================================================
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/workflows/admin", workflowAdminRoutes);
+app.use("/api/workflows/replay", workflowReplayRoutes);
+
 
 // =======================================================
 // AUTO-AUDIT FLAG (ALL MUTATIONS)
