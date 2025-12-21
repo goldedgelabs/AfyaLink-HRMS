@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 import WorkflowTimeline from "../../components/workflow/WorkflowTimeline";
+import WorkflowBadge from "../../components/workflow/WorkflowBadge";
 
 /**
  * ADMIN INSURANCE ACTIONS
@@ -39,7 +40,8 @@ export default function AdminInsuranceActions({ encounter }) {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Approval failed");
+      if (!res.ok)
+        throw new Error(data.error || "Approval failed");
 
       setMsg("✅ Insurance approved successfully");
     } catch (e) {
@@ -68,7 +70,8 @@ export default function AdminInsuranceActions({ encounter }) {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Rejection failed");
+      if (!res.ok)
+        throw new Error(data.error || "Rejection failed");
 
       setMsg("❌ Insurance rejected");
     } catch (e) {
@@ -81,6 +84,14 @@ export default function AdminInsuranceActions({ encounter }) {
   return (
     <div className="card premium-card">
       <h3>🛡 Insurance Admin Override</h3>
+
+      {/* =========================
+          CURRENT WORKFLOW STATE
+      ========================== */}
+      <div style={{ marginBottom: 12 }}>
+        <strong>Current Status:</strong>{" "}
+        <WorkflowBadge state={encounter.workflow.state} />
+      </div>
 
       {msg && (
         <div style={{ marginBottom: 12, color: "#b91c1c" }}>
@@ -122,7 +133,7 @@ export default function AdminInsuranceActions({ encounter }) {
       </div>
 
       {/* =========================
-          WORKFLOW CONTEXT
+          WORKFLOW CONTEXT (ALWAYS)
       ========================== */}
       <div style={{ marginTop: 16 }}>
         <WorkflowTimeline encounterId={encounter._id} />
