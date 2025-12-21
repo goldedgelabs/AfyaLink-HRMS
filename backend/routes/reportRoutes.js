@@ -1,54 +1,71 @@
 import express from "express";
-import {
-  authenticate,
-  authorize,
-} from "../middleware/authMiddleware.js";
+import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 import {
-  getReports,
-  getReportById,
   exportMedicalReport,
-  revenueSummary,
+  getReports,
+  getMyReports,
+  createReport,
+  updateReport,
+  deleteReport,
 } from "../controllers/reportController.js";
 
 const router = express.Router();
 
-/**
- * 🔐 All report routes require authentication
- */
+/* ======================================================
+   🔐 AUTHENTICATION
+====================================================== */
 router.use(authenticate);
 
-/**
- * 📊 General reports
- */
+/* ======================================================
+   📄 MEDICAL / MEDICO-LEGAL PDF EXPORT
+====================================================== */
+router.get(
+  "/medical/:encounterId",
+  authorize(["Admin", "Doctor"]),
+  exportMedicalReport
+);
+
+/* ======================================================
+   📋 REPORT LISTING
+====================================================== */
 router.get(
   "/",
-  authorize(["hospitaladmin", "doctor"]),
+  authorize(["Admin"]),
   getReports
 );
 
 router.get(
+  "/mine",
+  authorize(["Doctor", "Patient"]),
+  getMyReports
+);
+
+/* ======================================================
+   ➕ CREATE REPORT
+====================================================== */
+router.post(
+  "/",
+  authorize(["Doctor", "Admin"]),
+  createReport
+);
+
+/* ======================================================
+   ✏️ UPDATE REPORT
+====================================================== */
+router.put(
   "/:id",
-  authorize(["hospitaladmin", "doctor"]),
-  getReportById
+  authorize(["Doctor", "Admin"]),
+  updateReport
 );
 
-/**
- * 🧾 Medical-Legal / Clinical Report Export (PDF)
- */
-router.get(
-  "/medical/:encounterId",
-  authorize(["hospitaladmin", "doctor"]),
-  exportMedicalReport
-);
-
-/**
- * 💰 Revenue Summary
- */
-router.get(
-  "/revenue",
-  authorize(["hospitaladmin"]),
-  revenueSummary
+/* ======================================================
+   🗑 DELETE REPORT
+====================================================== */
+router.delete(
+  "/:id",
+  authorize(["Admin"]),
+  deleteReport
 );
 
 export default router;
