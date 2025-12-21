@@ -1,11 +1,13 @@
 import Encounter from "../models/Encounter.js";
+import InsuranceAuthorization from "../models/InsuranceAuthorization.js";
 import { requestShaPreauth } from "../services/shaService.js";
 import workflowService from "../services/workflowService.js";
+import { logAudit } from "../services/auditService.js";
 
-/**
- * POST /api/insurance/sha/preauth
- * 🔒 Workflow-gated
- */
+/* ======================================================
+   SHA PRE-AUTH (NORMAL FLOW)
+   POST /api/insurance/sha/preauth
+====================================================== */
 export async function shaPreauthorize(req, res) {
   const { encounterId } = req.body;
 
@@ -21,7 +23,7 @@ export async function shaPreauthorize(req, res) {
     return res.status(404).json({ error: "Encounter not found" });
   }
 
-  // 🔒 Workflow authority check
+  // 🔒 Workflow authority
   const allowed =
     encounter.workflow?.allowedTransitions?.includes(
       "INSURANCE_PREAUTHORIZED"
@@ -39,35 +41,7 @@ export async function shaPreauthorize(req, res) {
     patient: encounter.patient,
   });
 
-  if (result.status !== "APPROVED") {
-    // Optional: workflow transition for rejection
-    await workflowService.transition({
-      workflowId: encounter.workflow._id,
-      to: "INSURANCE_REJECTED",
-      actor: req.user,
-      meta: result,
-    });
-
-    return res.status(402).json({
-      error: "Insurance rejected",
-      reason: result.reason,
-    });
-  }
-
-  // ✅ APPROVED — advance workflow
-  await workflowService.transition({
-    workflowId: encounter.workflow._id,
-    to: "INSURANCE_APPROVED",
-    actor: req.user,
-    meta: {
-      provider: "SHA",
-      authorizationCode: result.authorizationCode,
-    },
-  });
-
-  res.json({
-    success: true,
-    provider: "SHA",
-    authorizationCode: result.authorizationCode,
-  });
-}
+  // Persist authorization record
+  const auth = await InsuranceAuthorization.create({
+    encounter: encounter._id,
+    provider
