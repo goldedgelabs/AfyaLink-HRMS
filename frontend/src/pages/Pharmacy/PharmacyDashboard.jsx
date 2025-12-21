@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
+import WorkflowTimeline from "../../components/workflow/WorkflowTimeline";
 
 /**
  * PHARMACY DASHBOARD — WORKFLOW ENFORCED
- * - Inventory + billing protected
- * - Backend is single source of truth
+ * Backend is the single source of truth
  */
 
 export default function PharmacyDashboard() {
@@ -38,10 +38,10 @@ export default function PharmacyDashboard() {
     try {
       const res = await apiFetch("/api/pharmacy/dispense", {
         method: "POST",
-        body: JSON.stringify({
+        body: {
           encounterId,
           prescriptionId,
-        }),
+        },
       });
 
       if (!res.ok) {
@@ -73,27 +73,41 @@ export default function PharmacyDashboard() {
               <th>Medications</th>
               <th>Status</th>
               <th>Action</th>
+              <th>Workflow</th>
             </tr>
           </thead>
           <tbody>
-            {queue.map((e) => (
-              <tr key={e._id}>
-                <td>{e.patient?.name}</td>
-                <td>{e.prescriptions?.length || 0}</td>
-                <td>{e.state}</td>
-                <td>
-                  <button
-                    className="button gradient-green"
-                    disabled={e.state !== "PRESCRIPTION_READY"}
-                    onClick={() =>
-                      dispense(e._id, e.prescriptions?.[0])
-                    }
-                  >
-                    Dispense
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {queue.map((e) => {
+              const canDispense =
+                e.workflow?.allowedTransitions?.includes("DISPENSED");
+
+              const prescriptionId =
+                e.prescriptions?.[0]?._id || e.prescriptions?.[0];
+
+              return (
+                <tr key={e._id}>
+                  <td>{e.patient?.name}</td>
+                  <td>{e.prescriptions?.length || 0}</td>
+                  <td>{e.workflow?.state}</td>
+
+                  <td>
+                    <button
+                      className="button gradient-green"
+                      disabled={!canDispense}
+                      onClick={() =>
+                        dispense(e._id, prescriptionId)
+                      }
+                    >
+                      Dispense
+                    </button>
+                  </td>
+
+                  <td style={{ minWidth: 280 }}>
+                    <WorkflowTimeline encounterId={e._id} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       ) : (
