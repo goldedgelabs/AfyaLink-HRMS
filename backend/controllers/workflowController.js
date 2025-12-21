@@ -1,5 +1,24 @@
 import Workflow from "../models/Workflow.js";
 import AuditLog from "../models/AuditLog.js";
+import { calculateSLA } from "../services/slaService.js";
+
+/**
+ * SLA RULE DEFINITIONS
+ */
+const SLA_RULES = [
+  {
+    name: "Insurance Approval",
+    start: "INSURANCE_PENDING",
+    end: ["INSURANCE_APPROVED", "INSURANCE_REJECTED"],
+    thresholdMs: 30 * 60 * 1000, // 30 minutes
+  },
+  {
+    name: "Lab Turnaround",
+    start: "LAB_PENDING",
+    end: ["LAB_COMPLETED"],
+    thresholdMs: 60 * 60 * 1000, // 60 minutes
+  },
+];
 
 /**
  * GET WORKFLOW TIMELINE
@@ -20,8 +39,7 @@ export async function getWorkflowTimeline(req, res) {
     }
 
     /* ================= WORKFLOW ================= */
-    const workflow = await Workflow.findOne({ encounter: encounterId })
-      .lean();
+    const workflow = await Workflow.findOne({ encounter: encounterId }).lean();
 
     if (!workflow) {
       return res.status(404).json({ error: "Workflow not found" });
@@ -34,6 +52,9 @@ export async function getWorkflowTimeline(req, res) {
     })
       .sort({ createdAt: 1 })
       .lean();
+
+    /* ================= SLA ================= */
+    const sla = calculateSLA(workflow, SLA_RULES);
 
     /* ================= RESPONSE ================= */
     return res.json({
@@ -53,6 +74,7 @@ export async function getWorkflowTimeline(req, res) {
         before: a.before,
         after: a.after,
       })),
+      sla,
     });
   } catch (err) {
     console.error("Workflow timeline error:", err);
