@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
-import WorkflowTimeline from "../../components/workflow/WorkflowTimeline";
-
-/**
- * PHARMACY DASHBOARD — HARD WORKFLOW + INSURANCE ENFORCED
- * Backend is the single source of truth
- */
+import WorkflowTimeline from "../workflow/WorkflowTimeline";
 
 export default function PharmacyDashboard() {
   const [queue, setQueue] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -17,132 +11,54 @@ export default function PharmacyDashboard() {
   }, []);
 
   async function loadQueue() {
-    setLoading(true);
-    setMsg("");
-
-    try {
-      const res = await apiFetch("/api/encounters?stage=PHARMACY");
-      if (!res.ok) throw new Error();
-
-      setQueue(await res.json());
-    } catch {
-      setMsg("Failed to load pharmacy queue");
-    } finally {
-      setLoading(false);
-    }
+    const res = await apiFetch("/api/encounters?stage=PHARMACY");
+    setQueue(await res.json());
   }
 
   async function dispense(encounterId, prescriptionId) {
-    setMsg("");
-
     try {
       const res = await apiFetch("/api/pharmacy/dispense", {
         method: "POST",
-        body: {
-          encounterId,
-          prescriptionId,
-        },
+        body: { encounterId, prescriptionId },
       });
 
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Dispense failed");
+        const err = await res.json();
+        throw new Error(err.error);
       }
 
-      await loadQueue();
-    } catch (err) {
-      setMsg(err.message);
+      loadQueue();
+    } catch (e) {
+      setMsg(e.message);
     }
   }
 
   return (
     <div className="card premium-card">
       <h2>Pharmacy Queue</h2>
+      {msg && <div style={{ color: "red" }}>{msg}</div>}
 
-      {msg && (
-        <div style={{ color: "red", marginBottom: 12 }}>
-          {msg}
-        </div>
-      )}
+      {queue.map((e) => {
+        const canDispense =
+          e.workflow?.allowedTransitions?.includes("DISPENSED");
 
-      {loading ? (
-        <div>Loading...</div>
-      ) : queue.length ? (
-        <table className="table premium-table">
-          <thead>
-            <tr>
-              <th>Patient</th>
-              <th>Medications</th>
-              <th>Status</th>
-              <th>Action</th>
-              <th>Workflow</th>
-            </tr>
-          </thead>
-          <tbody>
-            {queue.map((e) => {
-              const canDispense =
-                e.workflow?.allowedTransitions?.includes("DISPENSED");
+        return (
+          <div key={e._id} className="card sub-card">
+            <strong>{e.patient?.name}</strong>
 
-              const insuranceApproved =
-                e.insurance?.status === "APPROVED";
+            <button
+              disabled={!canDispense}
+              onClick={() =>
+                dispense(e._id, e.prescriptions?.[0])
+              }
+            >
+              Dispense
+            </button>
 
-              const prescriptionId =
-                e.prescriptions?.[0]?._id || e.prescriptions?.[0];
-
-              return (
-                <tr key={e._id}>
-                  <td>
-                    {e.patient?.name}
-
-                    {/* 🔴 INSURANCE BADGE */}
-                    {!insuranceApproved && (
-                      <span
-                        style={{
-                          color: "red",
-                          fontSize: 12,
-                          marginLeft: 8,
-                          fontWeight: "bold",
-                        }}
-                      >
-                        Insurance Pending
-                      </span>
-                    )}
-                  </td>
-
-                  <td>{e.prescriptions?.length || 0}</td>
-
-                  <td>{e.workflow?.state}</td>
-
-                  <td>
-                    <button
-                      className="button gradient-green"
-                      disabled={!canDispense || !insuranceApproved}
-                      title={
-                        !insuranceApproved
-                          ? "Insurance authorization required"
-                          : !canDispense
-                          ? "Workflow does not allow dispensing"
-                          : ""
-                      }
-                      onClick={() =>
-                        dispense(e._id, prescriptionId)
-                      }
-                    >
-                      Dispense
-                    </button>
-                  </td>
-
-                  <td style={{ minWidth: 280 }}>
-                    <WorkflowTimeline encounterId={e._id} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      ) : (
-        <div>No prescriptions pending</div>
-      )}
+            <WorkflowTimeline encounterId={e._id} />
+          </div>
+        );
+      })}
     </div>
   );
 }
