@@ -2,9 +2,67 @@ import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 
 /**
- * WORKFLOW TIMELINE — READ ONLY
- * Backend is the source of truth
+ * WORKFLOW TIMELINE — READ ONLY (VISUAL ENHANCED)
+ * Backend is the single source of truth
  */
+
+/* =========================================
+   STATE → VISUAL CONFIG
+========================================= */
+const STATE_META = {
+  // Doctor
+  TRIAGED: { color: "#2563eb", label: "Triage" },
+  DIAGNOSED: { color: "#2563eb", label: "Diagnosis" },
+
+  // Insurance (SHA)
+  SHA_PENDING: { color: "#f59e0b", label: "SHA Pending" },
+  SHA_APPROVED: { color: "#16a34a", label: "SHA Approved" },
+  SHA_REJECTED: { color: "#dc2626", label: "SHA Rejected" },
+
+  // Lab
+  LAB_PENDING: { color: "#7c3aed", label: "Lab Pending" },
+  LAB_COMPLETED: { color: "#7c3aed", label: "Lab Completed" },
+
+  // Pharmacy
+  PRESCRIPTION_READY: { color: "#0891b2", label: "Rx Ready" },
+  DISPENSED: { color: "#0891b2", label: "Dispensed" },
+
+  // Billing
+  PAYMENT_PENDING: { color: "#f59e0b", label: "Payment Pending" },
+  PAID: { color: "#16a34a", label: "Paid" },
+
+  // Terminal
+  COMPLETED: { color: "#16a34a", label: "Completed" },
+  CANCELLED: { color: "#6b7280", label: "Cancelled" },
+};
+
+/* =========================================
+   BADGE COMPONENT
+========================================= */
+function StateBadge({ state }) {
+  const meta = STATE_META[state] || {
+    color: "#6b7280",
+    label: state,
+  };
+
+  return (
+    <span
+      style={{
+        background: meta.color,
+        color: "white",
+        padding: "4px 10px",
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        marginRight: 6,
+        display: "inline-block",
+      }}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
 export default function WorkflowTimeline({ encounterId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,44 +109,42 @@ export default function WorkflowTimeline({ encounterId }) {
 
   return (
     <div className="card premium-card">
-      <h3>Workflow Timeline</h3>
+      <h3 style={{ marginBottom: 12 }}>Workflow Timeline</h3>
 
       {/* ================= CURRENT STATE ================= */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 16 }}>
         <strong>Current State:</strong>{" "}
-        <span className="badge">{workflow.state}</span>
+        <StateBadge state={workflow.state} />
       </div>
 
       {/* ================= ALLOWED ACTIONS ================= */}
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 20 }}>
         <strong>Allowed Actions:</strong>
-        <div style={{ marginTop: 6 }}>
+        <div style={{ marginTop: 8 }}>
           {workflow.allowedTransitions.length === 0 ? (
-            <em>None</em>
+            <em style={{ opacity: 0.7 }}>No actions allowed</em>
           ) : (
             workflow.allowedTransitions.map((a) => (
-              <span
-                key={a}
-                className="badge badge-secondary"
-                style={{ marginRight: 6 }}
-              >
-                {a}
-              </span>
+              <StateBadge key={a} state={a} />
             ))
           )}
         </div>
       </div>
 
       {/* ================= WORKFLOW HISTORY ================= */}
-      <h4>Workflow History</h4>
+      <h4>Clinical Progress</h4>
 
       {workflow.history.length === 0 ? (
         <em>No workflow transitions recorded.</em>
       ) : (
         <ul className="timeline">
           {workflow.history.map((h, idx) => (
-            <li key={idx} className="timeline-item">
-              <strong>{h.state}</strong>
+            <li
+              key={idx}
+              className="timeline-item"
+              style={{ marginBottom: 12 }}
+            >
+              <StateBadge state={h.state} />
               <div style={{ fontSize: 13, opacity: 0.8 }}>
                 {new Date(h.at).toLocaleString()}
               </div>
@@ -103,10 +159,14 @@ export default function WorkflowTimeline({ encounterId }) {
       {/* ================= AUDIT LOG ================= */}
       {audit?.length > 0 && (
         <>
-          <h4 style={{ marginTop: 20 }}>Audit Trail</h4>
+          <h4 style={{ marginTop: 24 }}>Audit Trail</h4>
           <ul className="timeline audit">
             {audit.map((a) => (
-              <li key={a.id} className="timeline-item">
+              <li
+                key={a.id}
+                className="timeline-item"
+                style={{ marginBottom: 12 }}
+              >
                 <strong>{a.action}</strong>
                 <div style={{ fontSize: 13, opacity: 0.8 }}>
                   {new Date(a.at).toLocaleString()}
