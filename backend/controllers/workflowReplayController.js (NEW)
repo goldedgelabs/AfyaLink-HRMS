@@ -1,0 +1,15 @@
+import Workflow from "../models/Workflow.js";
+
+export async function replayWorkflow(req, res) {
+  const { encounterId } = req.params;
+
+  const workflow = await Workflow.findOne({ encounter: encounterId }).lean();
+  if (!workflow) return res.status(404).json({ error: "Not found" });
+
+  return res.json({
+    encounterId,
+    initialState: workflow.history[0],
+    timeline: workflow.history,
+    finalState: workflow.state,
+  });
+}
