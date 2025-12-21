@@ -1,5 +1,198 @@
 🚀 STEP 1 — PRODUCTION LAUNCH CHECKLIST (FINAL)
 
+🚀 STEP 1 — PRODUCTION LAUNCH CHECKLIST (DAY-0 GO-LIVE)
+
+This is the exact checklist you run before opening the hospital doors on the system.
+
+Treat this like an aircraft pre-flight checklist.
+
+🔐 A. ENVIRONMENT & INFRASTRUCTURE (MANDATORY)
+✅ Environment Variables
+
+Confirm ALL are set in production (no .env leaks):
+
+NODE_ENV=production
+
+MONGO_URI (production cluster only)
+
+JWT_SECRET (32+ chars, random)
+
+ENCRYPTION_KEY (PDF + audit hashing)
+
+SHA_API_KEY / SHA_CLIENT_ID
+
+STRIPE_SECRET_KEY
+
+MPESA_CONSUMER_KEY
+
+MPESA_CONSUMER_SECRET
+
+BASE_URL=https://your-domain
+
+❌ No test keys
+❌ No localhost URLs
+
+✅ HTTPS & Domain
+
+TLS certificate valid (Let’s Encrypt or paid)
+
+Force HTTPS redirect
+
+HSTS enabled
+
+Test:
+
+curl -I http://your-domain
+
+
+✔ Redirects to HTTPS
+
+🧱 B. DATABASE SAFETY CHECK
+✅ Production MongoDB
+
+Atlas / managed DB
+
+IP whitelisted
+
+Authentication required
+
+Backups enabled (daily)
+
+Verify:
+
+db.runCommand({ connectionStatus: 1 })
+
+
+✔ No anonymous access
+✔ No dev database connected
+
+🔁 C. WORKFLOW INTEGRITY (CRITICAL)
+
+Run these manually:
+
+Insurance Gate
+
+Create encounter
+
+Attempt Lab before SHA approval
+❌ Must fail
+
+Approve SHA
+✔ Lab unlocks
+
+Payment Gate
+
+Attempt payment twice
+❌ Second attempt blocked
+
+Admin Override
+
+✔ Requires justification
+✔ Appears in audit log
+
+🧾 D. AUDIT & LEGAL READINESS
+✅ Audit Logs
+
+Confirm:
+
+Every workflow transition logged
+
+Actor + role recorded
+
+Timestamp immutable
+
+Test:
+
+db.auditlogs.find().sort({ at: -1 }).limit(5)
+
+✅ PDF Medical Reports
+
+PDF downloads successfully
+
+Filename unique
+
+Content correct
+
+Stored outside app memory
+
+Hash verified
+
+Open PDF → verify:
+✔ Patient details
+✔ Workflow history
+✔ Insurance status
+✔ Signatures
+
+📊 E. KPI DASHBOARD SANITY CHECK
+
+Check Admin → Hospital KPI Dashboard:
+
+✔ Encounters count correct
+✔ SHA pending/approved matches reality
+✔ Revenue equals billing totals
+✔ Lab/Pharmacy queues accurate
+
+If KPI wrong → DO NOT GO LIVE
+
+👥 F. USER ACCESS & ROLES
+Verify Roles:
+Role	Can	Cannot
+Doctor	Consult, request labs	Approve insurance
+Lab	Complete lab	Edit diagnosis
+Pharmacy	Dispense	Bypass SHA
+Billing	Collect payment	Modify workflow
+Admin	Override	Delete audits
+
+Test each role with a real login.
+
+🔄 G. BACKUP VERIFICATION (MUST DO)
+Confirm:
+
+✔ Last DB backup exists
+✔ Off-site copy present
+✔ Encryption verified
+
+Run one restore drill (even partial).
+
+If restore fails → STOP.
+
+🔔 H. REAL-TIME & MONITORING
+
+✔ App boots after restart
+✔ Socket notifications work
+✔ Error logs visible
+✔ No stack traces in UI
+
+🛑 I. KILL-SWITCH TEST
+
+Ask:
+
+“If something goes wrong, can we stop safely?”
+
+✔ Disable payments
+✔ Disable SHA calls
+✔ System stays read-only
+
+📜 J. FINAL SIGN-OFF
+
+Before launch, sign this (even digitally):
+
+“Workflow enforced
+Audit immutable
+Backups verified
+Legal reports valid”
+
+Only then → GO LIVE
+
+🟢 STATUS
+
+If ALL checks pass:
+
+✅ SAFE FOR PATIENTS
+✅ SAFE FOR MONEY
+✅ SAFE FOR COURT
+✅ SAFE FOR SHA
+
 This is the minimum, real-world checklist for a hospital system in Kenya.
 
 You can literally tick these and go live.
@@ -834,3 +1027,237 @@ You now have:
 ✔ Encrypted off-site backups
 
 This is hospital-grade software.
+
+
+.
+
+🔐 STEP 2 — SECURITY & PENETRATION CHECKLIST
+
+(Hospital-grade, SHA-safe, audit-defensible)
+
+This checklist assumes attackers exist and mistakes happen.
+Your goal is containment + proof, not blind trust.
+
+🧱 A. AUTHENTICATION & SESSION SECURITY
+✅ JWT / Auth
+
+JWT expiry ≤ 24 hours
+
+Refresh tokens rotate
+
+Tokens invalidated on logout
+
+Tokens bound to hospitalId
+
+Test:
+
+curl /api/encounters -H "Authorization: Bearer <expired>"
+
+
+❌ Must fail
+
+✅ Passwords
+
+bcrypt ≥ 12 rounds
+
+Password reset tokens expire
+
+No password reuse allowed (last 3)
+
+Verify:
+
+user.password.startsWith("$2b$")
+
+🏥 B. MULTI-TENANCY ISOLATION (CRITICAL)
+✅ Every query scoped by hospital
+
+Must exist in every controller:
+
+{ hospital: req.user.hospital }
+
+
+Test attack:
+
+Login as Hospital A
+
+Fetch Hospital B encounter by ID
+
+❌ Must return 403 / 404
+
+🔁 C. WORKFLOW & BUSINESS LOGIC ATTACKS
+Attempt:
+Attack	Expected
+Skip SHA	❌ Blocked
+Double payment	❌ Blocked
+Lab without approval	❌ Blocked
+Admin override w/o justification	❌ Blocked
+Direct DB mutation	❌ Detected in audit
+
+Test:
+
+POST /api/pharmacy/dispense
+
+
+without workflow permission → ❌
+
+🧾 D. AUDIT IMMUTABILITY (LEGAL SHIELD)
+✅ Audit Logs
+
+Append-only
+
+No delete route
+
+No update route
+
+Stored separately from main models
+
+Verify:
+
+grep DELETE audit
+
+
+❌ No endpoint exists
+
+✅ Hashing (Recommended)
+
+Each audit record includes hash
+
+Hash chain per encounter
+
+Purpose:
+✔ Tamper detection
+✔ Court admissibility
+
+📄 E. PDF & REPORT SECURITY
+✅ Medical Reports
+
+Generated server-side only
+
+No client HTML → PDF
+
+Includes:
+
+Hospital
+
+Encounter
+
+Workflow
+
+Audit trail
+
+Timestamp
+
+File Safety
+
+Stored outside /public
+
+Access via signed route only
+
+Logged on access
+
+💳 F. PAYMENT SECURITY
+Stripe
+
+✔ PaymentIntent bound to transactionId
+✔ Amount verified server-side
+✔ Webhook signature verified
+
+M-Pesa
+
+✔ STK push amount verified
+✔ Callback signature checked
+✔ Idempotency enforced
+
+Test replay:
+
+Replay callback → ❌ ignored
+
+🌐 G. API HARDENING
+✅ Rate Limiting
+
+Apply to:
+
+Login
+
+Payment
+
+SHA
+
+Admin override
+
+Example:
+
+limit: 10 req / minute
+
+✅ Input Validation
+
+Every POST:
+
+Zod / Joi validation
+
+Reject unknown fields
+
+Test:
+
+{ "amount": 1, "role": "admin" }
+
+
+❌ Must ignore / reject role injection
+
+🧨 H. COMMON ATTACK VECTORS
+❌ CSRF
+
+JWT in Authorization header
+
+No cookies for auth
+
+❌ XSS
+
+React auto-escapes
+
+No dangerouslySetInnerHTML
+
+❌ SQL Injection
+
+Mongo only
+
+No raw queries
+
+🔍 I. LOGGING & ALERTING
+Required Logs:
+
+Auth failures
+
+Payment failures
+
+Admin overrides
+
+SHA failures
+
+PDF exports
+
+Alert on:
+🚨 3 failed logins
+🚨 Multiple payment retries
+🚨 Override spikes
+
+🔥 J. DISASTER & INCIDENT RESPONSE
+You MUST be able to:
+
+✔ Disable payments
+✔ Disable SHA calls
+✔ Switch system to read-only
+✔ Restore DB within hours
+
+If not → DO NOT GO LIVE
+
+🧠 FINAL SECURITY VERDICT
+
+If all above pass:
+
+✅ Data protected
+✅ Money protected
+✅ SHA protected
+✅ Legal protected
+✅ Admin protected
+
