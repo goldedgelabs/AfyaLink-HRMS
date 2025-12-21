@@ -55,6 +55,7 @@ import crdtApiRoutes from "./routes/crdtApiRoutes.js";
 import crdtChunkRoutes from "./routes/crdtChunkRoutes.js";
 import signalingTokenRoutes from "./routes/signalingTokenRoutes.js";
 import insuranceRoutes from "./routes/insuranceRoutes.js";
+import kpiRoutes from "./routes/kpiRoutes.js";
 
 // 🔐 WORKFLOW (READ-ONLY)
 import workflowRoutes from "./routes/workflowRoutes.js";
@@ -183,6 +184,7 @@ app.use("/api/integrations/dlq-inspect", dlqInspectRoutes);
 app.use("/api/integrations/dlq-admin", dlqAdminRoutes);
 app.use("/api/mapping", mappingRoutes);
 app.use("/api/offline", offlineRoutes);
+app.use("/api/admin/kpis", kpiRoutes);
 
 // =======================================================
 // CRDT & SIGNALING
