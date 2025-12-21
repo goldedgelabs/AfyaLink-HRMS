@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 import { useAuth } from "../../utils/auth";
+import WorkflowTimeline from "../../components/workflow/WorkflowTimeline";
 
 /**
- * Payments Page (WORKFLOW ENFORCED)
- * - Stripe + M-Pesa
+ * PAYMENTS PAGE — WORKFLOW ENFORCED
  * - No double payment
  * - Backend is authority
  */
@@ -31,11 +31,14 @@ export default function PaymentsPage() {
   }
 
   /* ===============================
-     STRIPE — CREATE INTENT ONLY
+     STRIPE — CREATE INTENT
   =============================== */
   async function payStripe(tx) {
-    if (tx.status === "success") {
-      setMsg("Payment already completed");
+    const canPay =
+      tx.workflow?.allowedTransitions?.includes("PAID");
+
+    if (!canPay) {
+      setMsg("Payment not allowed at this stage");
       return;
     }
 
@@ -47,10 +50,10 @@ export default function PaymentsPage() {
         "/payments/stripe/create-payment-intent",
         {
           method: "POST",
-          body: JSON.stringify({
+          body: {
             amount: tx.amount,
-            transactionId: tx._id, // 🔒 bind to transaction
-          }),
+            transactionId: tx._id, // 🔒 hard bind
+          },
         }
       );
 
@@ -69,16 +72,19 @@ export default function PaymentsPage() {
   }
 
   /* ===============================
-     M-PESA — STK PUSH ONLY
+     M-PESA — STK PUSH
   =============================== */
   async function payMpesa(tx) {
-    if (!tx.phone) {
-      setMsg("Missing phone number on transaction");
+    const canPay =
+      tx.workflow?.allowedTransitions?.includes("PAID");
+
+    if (!canPay) {
+      setMsg("Payment not allowed at this stage");
       return;
     }
 
-    if (tx.status === "success") {
-      setMsg("Payment already completed");
+    if (!tx.phone) {
+      setMsg("Missing phone number on transaction");
       return;
     }
 
@@ -88,11 +94,11 @@ export default function PaymentsPage() {
     try {
       const res = await apiFetch("/payments/mpesa/stk", {
         method: "POST",
-        body: JSON.stringify({
+        body: {
           amount: tx.amount,
           phone: tx.phone,
-          transactionId: tx._id, // 🔒 bind to transaction
-        }),
+          transactionId: tx._id, // 🔒 hard bind
+        },
       });
 
       const data = await res.json();
@@ -134,49 +140,50 @@ export default function PaymentsPage() {
             <th>Amount</th>
             <th>Status</th>
             <th>Actions</th>
+            <th>Workflow</th>
           </tr>
         </thead>
         <tbody>
           {transactions.length ? (
-            transactions.map((tx) => (
-              <tr key={tx._id}>
-                <td>{tx.patient?.name || "—"}</td>
-                <td>{tx.amount} {tx.currency}</td>
-                <td>
-                  <strong
-                    style={{
-                      color:
-                        tx.status === "success"
-                          ? "green"
-                          : tx.status === "failed"
-                          ? "red"
-                          : "orange",
-                    }}
-                  >
-                    {tx.status.toUpperCase()}
-                  </strong>
-                </td>
-                <td>
-                  <button
-                    disabled={loading || tx.status === "success"}
-                    onClick={() => payStripe(tx)}
-                  >
-                    Stripe
-                  </button>
+            transactions.map((tx) => {
+              const canPay =
+                tx.workflow?.allowedTransitions?.includes("PAID");
 
-                  <button
-                    disabled={loading || tx.status === "success"}
-                    onClick={() => payMpesa(tx)}
-                    style={{ marginLeft: 8 }}
-                  >
-                    M-Pesa
-                  </button>
-                </td>
-              </tr>
-            ))
+              return (
+                <tr key={tx._id}>
+                  <td>{tx.patient?.name || "—"}</td>
+                  <td>{tx.amount} {tx.currency}</td>
+
+                  <td>
+                    <strong>{tx.workflow?.state}</strong>
+                  </td>
+
+                  <td>
+                    <button
+                      disabled={loading || !canPay}
+                      onClick={() => payStripe(tx)}
+                    >
+                      Stripe
+                    </button>
+
+                    <button
+                      disabled={loading || !canPay}
+                      onClick={() => payMpesa(tx)}
+                      style={{ marginLeft: 8 }}
+                    >
+                      M-Pesa
+                    </button>
+                  </td>
+
+                  <td style={{ minWidth: 280 }}>
+                    <WorkflowTimeline encounterId={tx.encounter} />
+                  </td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
-              <td colSpan="4" style={{ textAlign: "center" }}>
+              <td colSpan="5" style={{ textAlign: "center" }}>
                 No pending payments
               </td>
             </tr>
