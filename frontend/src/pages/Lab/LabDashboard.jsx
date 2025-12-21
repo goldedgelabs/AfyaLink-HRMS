@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 import WorkflowTimeline from "../workflow/WorkflowTimeline";
+import WorkflowBadge from "../workflow/WorkflowBadge";
 
 /**
  * LAB DASHBOARD — WORKFLOW ENFORCED
- * Backend is the single source of truth
+ * 🔒 Backend is the single source of truth
  */
 
 export default function LabDashboard() {
@@ -38,7 +39,7 @@ export default function LabDashboard() {
     try {
       const res = await apiFetch("/api/lab/complete", {
         method: "POST",
-        body: JSON.stringify({ encounterId }),
+        body: { encounterId },
       });
 
       if (!res.ok) {
@@ -56,7 +57,9 @@ export default function LabDashboard() {
     <div className="card premium-card">
       <h2>Lab Queue</h2>
 
-      {msg && <div style={{ color: "red", marginBottom: 12 }}>{msg}</div>}
+      {msg && (
+        <div style={{ color: "red", marginBottom: 12 }}>{msg}</div>
+      )}
 
       {loading ? (
         <div>Loading…</div>
@@ -67,8 +70,20 @@ export default function LabDashboard() {
 
           return (
             <div key={e._id} className="card sub-card">
-              <strong>{e.patient?.name}</strong>
+              {/* ================= HEADER ================= */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
+                }}
+              >
+                <strong>{e.patient?.name}</strong>
+                <WorkflowBadge state={e.workflow?.state} />
+              </div>
 
+              {/* ================= ACTION ================= */}
               <button
                 disabled={!canComplete}
                 onClick={() => completeLab(e._id)}
@@ -76,7 +91,7 @@ export default function LabDashboard() {
                 Complete Lab
               </button>
 
-              {/* 🔐 Timeline is NEVER hidden */}
+              {/* ================= WORKFLOW (NEVER HIDDEN) ================= */}
               <WorkflowTimeline encounterId={e._id} />
             </div>
           );
