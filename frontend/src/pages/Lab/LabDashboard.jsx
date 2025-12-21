@@ -2,6 +2,11 @@ import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 import WorkflowTimeline from "../workflow/WorkflowTimeline";
 
+/**
+ * LAB DASHBOARD — WORKFLOW ENFORCED
+ * Backend is the single source of truth
+ */
+
 export default function LabDashboard() {
   const [encounters, setEncounters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,9 +17,13 @@ export default function LabDashboard() {
   }, []);
 
   async function loadLabQueue() {
+    setLoading(true);
+    setMsg("");
+
     try {
       const res = await apiFetch("/api/encounters?stage=LAB");
       if (!res.ok) throw new Error();
+
       setEncounters(await res.json());
     } catch {
       setMsg("Failed to load lab queue");
@@ -24,18 +33,20 @@ export default function LabDashboard() {
   }
 
   async function completeLab(encounterId) {
+    setMsg("");
+
     try {
       const res = await apiFetch("/api/lab/complete", {
         method: "POST",
-        body: { encounterId },
+        body: JSON.stringify({ encounterId }),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error);
+        throw new Error(err.error || "Lab completion failed");
       }
 
-      loadLabQueue();
+      await loadLabQueue();
     } catch (e) {
       setMsg(e.message);
     }
@@ -44,20 +55,19 @@ export default function LabDashboard() {
   return (
     <div className="card premium-card">
       <h2>Lab Queue</h2>
-      {msg && <div style={{ color: "red" }}>{msg}</div>}
+
+      {msg && <div style={{ color: "red", marginBottom: 12 }}>{msg}</div>}
 
       {loading ? (
-        "Loading…"
-      ) : (
+        <div>Loading…</div>
+      ) : encounters.length ? (
         encounters.map((e) => {
           const canComplete =
             e.workflow?.allowedTransitions?.includes("LAB_COMPLETED");
 
           return (
             <div key={e._id} className="card sub-card">
-              <div>
-                <strong>{e.patient?.name}</strong>
-              </div>
+              <strong>{e.patient?.name}</strong>
 
               <button
                 disabled={!canComplete}
@@ -66,10 +76,13 @@ export default function LabDashboard() {
                 Complete Lab
               </button>
 
+              {/* 🔐 Timeline is NEVER hidden */}
               <WorkflowTimeline encounterId={e._id} />
             </div>
           );
         })
+      ) : (
+        <div>No lab work pending</div>
       )}
     </div>
   );
