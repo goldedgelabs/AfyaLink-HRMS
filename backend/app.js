@@ -57,6 +57,7 @@ import signalingTokenRoutes from "./routes/signalingTokenRoutes.js";
 
 // 🔐 WORKFLOW (READ-ONLY)
 import workflowRoutes from "./routes/workflowRoutes.js";
+import workflowAdminRoutes from "./routes/workflowAdminRoutes.js";
 
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -93,6 +94,7 @@ app.use(morgan("dev"));
 // WORKFLOW (READ-ONLY, NO MUTATIONS)
 // =======================================================
 app.use("/api/workflows", workflowRoutes);
+app.use("/api/workflows/admin", workflowAdminRoutes);
 
 // =======================================================
 // AUTO-AUDIT FLAG (ALL MUTATIONS)
