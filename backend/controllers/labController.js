@@ -1,50 +1,74 @@
-import { workflowService } from "../services/workflowService.js";
+import Workflow from "../models/Workflow.js";
+import LabOrder from "../models/LabOrder.js";
+import { assertWorkflowState } from "../services/clinicalWorkflowGuard.js";
 
-/* ======================================================
-   COMPLETE LAB TEST (WORKFLOW TRANSITION)
-====================================================== */
-export const completeLab = async (req, res, next) => {
+/**
+ * COMPLETE LAB
+ * 🔒 Workflow enforced
+ * State: LAB_ORDERED → LAB_COMPLETED
+ * Never mutates encounter directly
+ */
+export async function completeLab(req, res) {
   try {
     const {
-      workflowId,        // LAB workflow ID
       encounterId,
-      testType,
-      result,
+      results,
       notes,
     } = req.body;
 
-    if (!workflowId || !encounterId || !testType) {
+    if (!encounterId || !results) {
       return res.status(400).json({
-        msg: "workflowId, encounterId and testType are required",
+        error: "encounterId and results are required",
       });
     }
 
-    /**
-     * 🚨 ONLY LEGAL LAB MUTATION
-     */
-    const wf = await workflowService.transition(
-      "LAB",
-      workflowId,
+    /* ================= WORKFLOW ================= */
+    const workflow = await Workflow.findOne({ encounter: encounterId });
+
+    assertWorkflowState(workflow, ["LAB_ORDERED"]);
+
+    /* ================= DUPLICATE GUARD ================= */
+    const existing = await LabOrder.findOne({
+      encounter: encounterId,
+      status: "COMPLETED",
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        error: "Lab already completed for this encounter",
+      });
+    }
+
+    /* ================= COMPLETE LAB ================= */
+    const lab = await LabOrder.findOneAndUpdate(
+      { encounter: encounterId },
       {
-        encounterId,
-        testType,
-        result,
+        results,
         notes,
-        technician: req.user.id,
-        hospital: req.user.hospitalId,
-      }
+        status: "COMPLETED",
+        completedBy: req.user._id,
+        completedAt: new Date(),
+      },
+      { new: true }
     );
 
-    /**
-     * Context is authoritative
-     * Encounter updates happen via workflowEffects
-     */
-    res.json({
+    if (!lab) {
+      return res.status(404).json({
+        error: "Lab order not found",
+      });
+    }
+
+    /* ================= TRANSITION ================= */
+    await workflow.transition("LAB_COMPLETED", req.user);
+
+    return res.json({
       status: "completed",
-      labResult: wf.context.labResult,
-      encounter: wf.context.encounter,
+      lab,
     });
   } catch (err) {
-    next(err);
+    console.error("Complete lab error:", err);
+    return res.status(400).json({
+      error: err.message || "Failed to complete lab",
+    });
   }
-};
+}
