@@ -7,6 +7,14 @@ export const WORKFLOW_STATES = {
   BILLED: "BILLED",
   PAID: "PAID",
 };
+export const WORKFLOW_TRANSITIONS = {
+  // normal flow (example)
+  SHA_PENDING: ["SHA_APPROVED", "SHA_REJECTED"],
+
+  // ADMIN OVERRIDE (global)
+  "*": ["ADMIN_OVERRIDE_APPROVE", "ADMIN_OVERRIDE_REJECT"],
+};
+
 
 export const WORKFLOW_TRANSITIONS = {
   CONSULTATION: ["LAB_ORDERED", "PRESCRIPTION_CREATED"],
