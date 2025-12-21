@@ -5,6 +5,35 @@
   border-radius: 10px;
   border: 1px solid #d1d5db;
 }
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.kpi-card {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.kpi-section {
+  margin-top: 24px;
+}
+
 .timeline {
   list-style: none;
   padding-left: 0;
