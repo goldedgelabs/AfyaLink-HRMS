@@ -1,15 +1,23 @@
 import express from "express";
-import { index, list } from "../controllers/pharmacyController.js";
+import {
+  index,
+  list,
+  createPrescription,
+  dispenseMedication,
+} from "../controllers/pharmacyController.js";
 import protect from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 
 const router = express.Router();
 
 /* ======================================================
-   PHARMACY ROUTES
+   PHARMACY ROUTES (WORKFLOW ENFORCED)
 ====================================================== */
 
-// Base pharmacy view
+/**
+ * Base pharmacy view
+ * Read-only
+ */
 router.get(
   "/",
   protect,
@@ -17,7 +25,10 @@ router.get(
   index
 );
 
-// List medicines / prescriptions
+/**
+ * List medicines / prescriptions
+ * Read-only
+ */
 router.get(
   "/list",
   protect,
@@ -25,7 +36,10 @@ router.get(
   list
 );
 
-// 📊 Pharmacy dashboard (KPIs)
+/**
+ * 📊 Pharmacy dashboard (KPIs)
+ * Read-only
+ */
 router.get(
   "/dashboard",
   protect,
@@ -38,6 +52,35 @@ router.get(
       totalMedicines: 142,
     });
   }
+);
+
+/* ======================================================
+   🔒 WORKFLOW MUTATIONS (STRICT)
+====================================================== */
+
+/**
+ * CREATE PRESCRIPTION
+ * State: LAB_COMPLETED → PRESCRIPTION_CREATED
+ * Role: doctor
+ */
+router.post(
+  "/prescriptions",
+  protect,
+  authorize("doctor", "write"),
+  createPrescription
+);
+
+/**
+ * DISPENSE MEDICATION
+ * State: PRESCRIPTION_CREATED → DISPENSED
+ * Role: pharmacy
+ * Insurance: REQUIRED
+ */
+router.post(
+  "/dispense",
+  protect,
+  authorize("pharmacy", "write"),
+  dispenseMedication
 );
 
 export default router;
