@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 import WorkflowBadge from "./WorkflowBadge";
+import SLABadge from "./SLABadge";
+
 
 /**
  * WORKFLOW TIMELINE — READ ONLY
@@ -74,6 +76,16 @@ export default function WorkflowTimeline({ encounterId }) {
           )}
         </div>
       </div>
+
+      {/* ================= SLA ================= */}
+{data.sla?.length > 0 && (
+  <>
+    <h4>SLA Timers</h4>
+    {data.sla.map((s) => (
+      <SLABadge key={s.name} sla={s} />
+    ))}
+  </>
+)}
 
       {/* ================= WORKFLOW HISTORY ================= */}
       <h4>Workflow History</h4>
