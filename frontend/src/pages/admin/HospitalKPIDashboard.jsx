@@ -82,7 +82,10 @@ export default function HospitalKPIDashboard() {
             label="Total Revenue"
             value={`KES ${kpis.billing.totalRevenue.toLocaleString()}`}
           />
-          <Kpi label="Pending Payments" value={kpis.billing.pendingPayments} />
+          <Kpi
+            label="Pending Payments"
+            value={kpis.billing.pendingPayments}
+          />
         </div>
       </section>
     </div>
