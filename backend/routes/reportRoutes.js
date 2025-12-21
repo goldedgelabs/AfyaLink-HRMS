@@ -1,19 +1,54 @@
-// routes/reportRoutes.js
-import express from 'express';
-import { authenticate, authorize } from '../middleware/authMiddleware.js';
-import { getReports, getReportById } from '../controllers/reportController.js';
+import express from "express";
+import {
+  authenticate,
+  authorize,
+} from "../middleware/authMiddleware.js";
+
+import {
+  getReports,
+  getReportById,
+  exportMedicalReport,
+  revenueSummary,
+} from "../controllers/reportController.js";
 
 const router = express.Router();
 
+/**
+ * 🔐 All report routes require authentication
+ */
 router.use(authenticate);
-router.get('/', authorize(['hospitaladmin', 'doctor']), getReports);
-router.get('/:id', authorize(['hospitaladmin', 'doctor']), getReportById);
+
+/**
+ * 📊 General reports
+ */
 router.get(
-  "/revenue",
-  auth,
-  authorize("reports", "read"),
-  revenueSummary
+  "/",
+  authorize(["hospitaladmin", "doctor"]),
+  getReports
 );
 
+router.get(
+  "/:id",
+  authorize(["hospitaladmin", "doctor"]),
+  getReportById
+);
+
+/**
+ * 🧾 Medical-Legal / Clinical Report Export (PDF)
+ */
+router.get(
+  "/medical/:encounterId",
+  authorize(["hospitaladmin", "doctor"]),
+  exportMedicalReport
+);
+
+/**
+ * 💰 Revenue Summary
+ */
+router.get(
+  "/revenue",
+  authorize(["hospitaladmin"]),
+  revenueSummary
+);
 
 export default router;
