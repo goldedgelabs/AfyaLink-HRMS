@@ -1,55 +1,23 @@
-import { workflowService } from "../services/workflowService.js";
+import Workflow from "../models/Workflow.js";
+import Prescription from "../models/Prescription.js";
+import { assertWorkflowState } from "../services/clinicalWorkflowGuard.js";
 
-/* ======================================================
-   DISPENSE MEDICATION (WORKFLOW ENFORCED)
-====================================================== */
-export const dispenseMedication = async (req, res, next) => {
-  try {
-    const {
-      workflowId,       // PHARMACY workflow ID
-      prescriptionId,
-      encounterId,
-      quantity,
-      notes,
-    } = req.body;
+export async function createPrescription(req, res) {
+  const { encounterId, meds } = req.body;
 
-    if (!workflowId || !prescriptionId || !encounterId) {
-      return res.status(400).json({
-        msg: "workflowId, prescriptionId, and encounterId are required",
-      });
-    }
+  const workflow = await Workflow.findOne({ encounter: encounterId });
 
-    /**
-     * 🚨 ONLY LEGAL PHARMACY MUTATION
-     */
-    const wf = await workflowService.transition(
-      "PHARMACY",
-      workflowId,
-      {
-        prescriptionId,
-        encounterId,
-        quantity,
-        dispensedBy: req.user.id,
-        hospital: req.user.hospitalId,
-        notes,
-      }
-    );
+  assertWorkflowState(workflow, ["LAB_COMPLETED"]);
 
-    /**
-     * Effects (authoritative):
-     * - Inventory decrement
-     * - Billing line item
-     * - Encounter update
-     * - Audit log
-     * - Receipt pending
-     */
-    res.json({
-      status: "dispensed",
-      prescription: wf.context.prescription,
-      encounter: wf.context.encounter,
-      billing: wf.context.billing,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+  const rx = await Prescription.create({
+    encounter: encounterId,
+    meds,
+    prescribedBy: req.user._id,
+    hospital: req.user.hospital,
+    $locals: { viaWorkflow: true },
+  });
+
+  await workflow.transition("PRESCRIPTION_CREATED", req.user);
+
+  res.json(rx);
+}
