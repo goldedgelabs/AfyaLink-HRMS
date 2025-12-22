@@ -4,7 +4,7 @@ import {
   adminApproveInsurance,
   adminRejectInsurance,
 } from "../controllers/insuranceController.js";
-import protect from "../middleware/authMiddleware.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 
 const router = express.Router();
