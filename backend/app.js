@@ -14,6 +14,7 @@ import "./utils/logger.js";
 // =======================
 // ROUTES
 // =======================
+import workflowReplayRoutes from "./routes/workflowReplayRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
