@@ -1,6 +1,7 @@
 import Transaction from "../models/Transaction.js";
 import PDFDocument from "pdfkit";
-import { workflowService } from "../services/workflowService.js";
+import workflowService from "../services/workflowService.js";
+
 
 /* ======================================================
    BILLING DASHBOARD (SAFE)
