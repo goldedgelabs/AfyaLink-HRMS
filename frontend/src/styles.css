@@ -1,82 +1,15 @@
-.auth-card select {
-  width: 100%;
-  padding: 12px;
-  margin-top: 6px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-}
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
-  margin-top: 8px;
+/* =========================
+   GLOBAL
+========================= */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f6fa;
 }
 
-.kpi-card {
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: 16px;
-  text-align: center;
-}
-
-.kpi-label {
-  font-size: 0.85rem;
-  color: #6b7280;
-}
-
-.kpi-value {
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-top: 4px;
-}
-
-.kpi-section {
-  margin-top: 24px;
-}
-
-.timeline {
-  list-style: none;
-  padding-left: 0;
-}
-
-.timeline-item {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.timeline-dot {
-  width: 10px;
-  height: 10px;
-  background: #6366f1;
-  border-radius: 50%;
-  margin-top: 6px;
-}
-
-.timeline-content {
-  background: #f9fafb;
-  padding: 10px 14px;
-  border-radius: 8px;
-  width: 100%;
-}
-
-.timeline-note {
-  margin-top: 6px;
-  font-style: italic;
-}
-
-.pw-strength {
-  margin-top: 6px;
-  font-size: 13px;
-}
-
-.pw-strength.weak { color: #dc2626; }
-.pw-strength.medium { color: #d97706; }
-.pw-strength.strong { color: #16a34a; }
-/* ---------------------------
-   Auth Pages
---------------------------- */
-
+/* =========================
+   AUTH PAGES
+========================= */
 .auth-bg {
   min-height: 100vh;
   background: linear-gradient(135deg, #0f766e, #2563eb);
@@ -112,7 +45,8 @@
   display: block;
 }
 
-.auth-card input {
+/* 🔒 DEFAULT INPUTS (TEXT, EMAIL, PASSWORD) */
+.auth-card input:not([type="checkbox"]) {
   width: 100%;
   padding: 12px 14px;
   margin-top: 6px;
@@ -126,6 +60,48 @@
   border-color: #2563eb;
 }
 
+/* =========================
+   REMEMBER ME ROW (FIXED)
+========================= */
+.auth-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ✅ CHECKBOX OVERRIDE */
+.remember input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border-radius: 4px;
+}
+
+/* Forgot password */
+.forgot-link {
+  font-size: 14px;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   AUTH BUTTON
+========================= */
 .auth-card button {
   width: 100%;
   margin-top: 24px;
@@ -143,6 +119,9 @@
   background: #1d4ed8;
 }
 
+/* =========================
+   AUTH FOOTER
+========================= */
 .auth-footer {
   margin-top: 18px;
   text-align: center;
@@ -156,9 +135,10 @@
   text-decoration: none;
 }
 
-
-
-.error {
+/* =========================
+   AUTH MESSAGES
+========================= */
+.auth-error {
   background: #fee2e2;
   color: #991b1b;
   padding: 10px;
@@ -167,10 +147,117 @@
   font-size: 14px;
 }
 
-body { margin:0; font-family: system-ui; background:#f5f6fa; }
-.sidebar { width:220px; background:#111827; color:white; min-height:100vh; }
-.sidebar a { display:block; padding:10px; color:white; text-decoration:none; }
-.main { padding:20px; }
+.auth-info {
+  background: #e0f2fe;
+  color: #075985;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* =========================
+   KPI DASHBOARD
+========================= */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.kpi-card {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.kpi-section {
+  margin-top: 24px;
+}
+
+/* =========================
+   WORKFLOW TIMELINE
+========================= */
+.timeline {
+  list-style: none;
+  padding-left: 0;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  background: #6366f1;
+  border-radius: 50%;
+  margin-top: 6px;
+}
+
+.timeline-content {
+  background: #f9fafb;
+  padding: 10px 14px;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.timeline-note {
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* =========================
+   PASSWORD STRENGTH
+========================= */
+.pw-strength {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.pw-strength.weak { color: #dc2626; }
+.pw-strength.medium { color: #d97706; }
+.pw-strength.strong { color: #16a34a; }
+
+/* =========================
+   SIDEBAR & LAYOUT
+========================= */
+.sidebar {
+  width: 220px;
+  background: #111827;
+  color: white;
+  min-height: 100vh;
+}
+
+.sidebar a {
+  display: block;
+  padding: 10px;
+  color: white;
+  text-decoration: none;
+}
+
+.main {
+  padding: 20px;
+}
+
+/* =========================
+   GUEST / MARKETING PAGES
+========================= */
 .guest-wrap {
   max-width: 960px;
   margin: 40px auto;
