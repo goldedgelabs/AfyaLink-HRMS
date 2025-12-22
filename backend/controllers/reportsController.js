@@ -4,27 +4,19 @@ import AuditLog from "../models/AuditLog.js";
 import Report from "../models/Report.js";
 
 import { generateMedicalReport } from "../services/medicalReportService.js";
-import { io } from "../server.js";
+import { getIO } from "../utils/socket.js";
 
 /* ======================================================
    📄 EXPORT MEDICAL / MEDICO-LEGAL REPORT (PDF)
-   GET /api/reports/medical/:encounterId
-   🔒 Read-only | Audited | Tenant isolated
 ====================================================== */
 export const exportMedicalReport = async (req, res) => {
   try {
-    /* ==========================
-       ROLE GUARD
-    ========================== */
     if (!["Admin", "Doctor"].includes(req.user.role)) {
-      return res.status(403).json({ error: "Not authorized to export reports" });
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     const { encounterId } = req.params;
 
-    /* ==========================
-       LOAD ENCOUNTER
-    ========================== */
     const encounter = await Encounter.findById(encounterId)
       .populate("patient")
       .populate("hospital");
@@ -33,25 +25,16 @@ export const exportMedicalReport = async (req, res) => {
       return res.status(404).json({ error: "Encounter not found" });
     }
 
-    /* ==========================
-       TENANT ISOLATION
-    ========================== */
     if (String(encounter.hospital._id) !== String(req.user.hospital)) {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    /* ==========================
-       WORKFLOW + AUDIT TRAIL
-    ========================== */
     const workflow = await Workflow.findById(encounter.workflow);
 
     const audit = await AuditLog.find({
       resourceId: workflow?._id,
     }).sort({ at: 1 });
 
-    /* ==========================
-       GENERATE PDF
-    ========================== */
     const pdf = generateMedicalReport({
       encounter,
       workflow,
@@ -59,9 +42,6 @@ export const exportMedicalReport = async (req, res) => {
       hospital: encounter.hospital,
     });
 
-    /* ==========================
-       AUDIT EXPORT (LEGAL)
-    ========================== */
     await AuditLog.create({
       resourceId: encounter._id,
       resourceType: "MEDICAL_REPORT",
@@ -72,9 +52,6 @@ export const exportMedicalReport = async (req, res) => {
       at: new Date(),
     });
 
-    /* ==========================
-       STREAM PDF
-    ========================== */
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
@@ -89,7 +66,7 @@ export const exportMedicalReport = async (req, res) => {
 };
 
 /* ======================================================
-   📋 GET ALL REPORTS (Admin / Hospital)
+   📋 GET ALL REPORTS (Admin)
 ====================================================== */
 export const getReports = async (req, res) => {
   try {
@@ -114,17 +91,10 @@ export const getReports = async (req, res) => {
 ====================================================== */
 export const getMyReports = async (req, res) => {
   try {
-    const filter = {
-      hospital: req.user.hospital,
-    };
+    const filter = { hospital: req.user.hospital };
 
-    if (req.user.role === "Doctor") {
-      filter.createdBy = req.user._id;
-    }
-
-    if (req.user.role === "Patient") {
-      filter.patient = req.user._id;
-    }
+    if (req.user.role === "Doctor") filter.createdBy = req.user._id;
+    if (req.user.role === "Patient") filter.patient = req.user._id;
 
     const reports = await Report.find(filter)
       .populate("patient createdBy")
@@ -137,7 +107,7 @@ export const getMyReports = async (req, res) => {
 };
 
 /* ======================================================
-   ➕ CREATE REPORT (Clinical Draft)
+   ➕ CREATE REPORT
 ====================================================== */
 export const createReport = async (req, res) => {
   try {
@@ -147,11 +117,12 @@ export const createReport = async (req, res) => {
       hospital: req.user.hospital,
     });
 
-    io.to(`hospital:${req.user.hospital}`).emit("notification", {
-      type: "REPORT_CREATED",
-      message: "New medical report created",
-      reportId: report._id,
-    });
+    getIO()
+      .to(`hospital:${req.user.hospital}`)
+      .emit("notification", {
+        type: "REPORT_CREATED",
+        reportId: report._id,
+      });
 
     res.status(201).json(report);
   } catch (err) {
@@ -160,15 +131,12 @@ export const createReport = async (req, res) => {
 };
 
 /* ======================================================
-   ✏️ UPDATE REPORT (Clinical Draft)
+   ✏️ UPDATE REPORT
 ====================================================== */
 export const updateReport = async (req, res) => {
   try {
     const report = await Report.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        hospital: req.user.hospital,
-      },
+      { _id: req.params.id, hospital: req.user.hospital },
       req.body,
       { new: true }
     );
@@ -177,11 +145,12 @@ export const updateReport = async (req, res) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
-    io.to(`hospital:${req.user.hospital}`).emit("notification", {
-      type: "REPORT_UPDATED",
-      message: "Medical report updated",
-      reportId: report._id,
-    });
+    getIO()
+      .to(`hospital:${req.user.hospital}`)
+      .emit("notification", {
+        type: "REPORT_UPDATED",
+        reportId: report._id,
+      });
 
     res.json(report);
   } catch (err) {
@@ -190,7 +159,7 @@ export const updateReport = async (req, res) => {
 };
 
 /* ======================================================
-   🗑 DELETE REPORT (Clinical Draft)
+   🗑 DELETE REPORT
 ====================================================== */
 export const deleteReport = async (req, res) => {
   try {
@@ -203,11 +172,12 @@ export const deleteReport = async (req, res) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
-    io.to(`hospital:${req.user.hospital}`).emit("notification", {
-      type: "REPORT_DELETED",
-      message: "Medical report deleted",
-      reportId: report._id,
-    });
+    getIO()
+      .to(`hospital:${req.user.hospital}`)
+      .emit("notification", {
+        type: "REPORT_DELETED",
+        reportId: report._id,
+      });
 
     res.json({ message: "Deleted" });
   } catch (err) {
