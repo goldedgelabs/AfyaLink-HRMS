@@ -1,14 +1,12 @@
-import express from "express";
-import { replayWorkflow } from "../controllers/workflowReplayController.js";
-import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+// backend/controllers/workflowReplayController.js
 
-const router = express.Router();
+export async function replayWorkflow(req, res) {
+  const { encounterId } = req.params;
 
-router.get(
-  "/:encounterId/replay",
-  requireAuth,
-  requireRole("admin"),
-  replayWorkflow
-);
-
-export default router;
+  return res.status(200).json({
+    success: true,
+    message: "Workflow replay executed",
+    encounterId,
+    events: [], // placeholder for future replay logs
+  });
+}
