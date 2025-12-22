@@ -1,5 +1,8 @@
 // backend/config/workflows.js
 
+/**
+ * All possible workflow states
+ */
 export const WORKFLOW_STATES = {
   CONSULTATION: "CONSULTATION",
   LAB_ORDERED: "LAB_ORDERED",
@@ -18,8 +21,7 @@ export const WORKFLOW_STATES = {
 };
 
 /**
- * Clinical workflow transitions
- * (Patient care lifecycle)
+ * Clinical workflow transitions (patient care lifecycle)
  */
 export const CLINICAL_WORKFLOW_TRANSITIONS = {
   CONSULTATION: ["LAB_ORDERED", "PRESCRIPTION_CREATED"],
@@ -39,3 +41,17 @@ export const ADMIN_WORKFLOW_TRANSITIONS = {
   // Admin override allowed from any state
   "*": ["ADMIN_OVERRIDE_APPROVE", "ADMIN_OVERRIDE_REJECT"],
 };
+
+/**
+ * ✅ ENGINE-COMPATIBLE EXPORT
+ * This is what workflowEngine imports
+ */
+export const WORKFLOW_TRANSITIONS = {
+  ...CLINICAL_WORKFLOW_TRANSITIONS,
+  ...ADMIN_WORKFLOW_TRANSITIONS,
+};
+
+/**
+ * ✅ Default export (safe for future imports)
+ */
+export default WORKFLOW_TRANSITIONS;
