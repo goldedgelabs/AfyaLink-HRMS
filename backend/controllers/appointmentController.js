@@ -1,4 +1,4 @@
-import { workflowService } from "../services/workflowService.js";
+import workflowService from "../services/workflowService.js";
 import Appointment from "../models/Appointment.js";
 import { getIO } from "../utils/socket.js";
 
