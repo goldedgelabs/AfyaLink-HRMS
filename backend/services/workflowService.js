@@ -1,5 +1,3 @@
-// backend/services/workflowService.js
-
 import Appointment from "../models/Appointment.js";
 import Encounter from "../models/Encounter.js";
 import { v4 as uuid } from "uuid";
@@ -66,8 +64,9 @@ class WorkflowService {
     if (payload.notes) encounter.consultationNotes = payload.notes;
     if (payload.diagnosis) encounter.diagnosis = payload.diagnosis;
     if (payload.labOrderId) encounter.labOrders.push(payload.labOrderId);
-    if (payload.prescriptionId)
+    if (payload.prescriptionId) {
       encounter.prescriptions.push(payload.prescriptionId);
+    }
     if (payload.billId) encounter.bill = payload.billId;
 
     if (nextState === "CLOSED") {
@@ -79,4 +78,13 @@ class WorkflowService {
   }
 }
 
-export default new WorkflowService();
+/**
+ * ✅ CREATE INSTANCE
+ */
+const workflowService = new WorkflowService();
+
+/**
+ * ✅ EXPORT BOTH (THIS IS THE FIX)
+ */
+export { workflowService };
+export default workflowService;
