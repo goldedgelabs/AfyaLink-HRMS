@@ -5,9 +5,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 /**
- * Authentication middleware
+ * Base authentication logic
  */
-export const requireAuth = async (req, res, next) => {
+const authenticate = async (req, res, next) => {
   try {
     let token;
 
@@ -41,8 +41,13 @@ export const requireAuth = async (req, res, next) => {
 };
 
 /**
- * Role-based authorization middleware
- * Usage: requireRole("admin")
+ * EXPORTS — support ALL route imports
+ */
+export const protect = authenticate;
+export const requireAuth = authenticate;
+
+/**
+ * Role-based authorization
  */
 export const requireRole = (...roles) => {
   return (req, res, next) => {
