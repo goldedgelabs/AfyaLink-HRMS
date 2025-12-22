@@ -4,13 +4,16 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-export const protect = async (req, res, next) => {
+/**
+ * Authentication middleware
+ */
+export const requireAuth = async (req, res, next) => {
   try {
     let token;
-    const auth = req.headers.authorization;
 
-    if (auth && auth.startsWith("Bearer")) {
-      token = auth.split(" ")[1];
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
     } else if (req.cookies?.token) {
       token = req.cookies.token;
     }
@@ -31,10 +34,26 @@ export const protect = async (req, res, next) => {
 
     req.user = user;
     next();
-  } catch (err) {
-    console.error(err);
-    return res.status(401).json({ message: "Not authorized" });
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ message: "Not authorized" });
   }
 };
 
-export const requireAuth = protect;
+/**
+ * Role-based authorization middleware
+ * Usage: requireRole("admin")
+ */
+export const requireRole = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    next();
+  };
+};
