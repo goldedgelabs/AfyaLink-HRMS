@@ -1,3 +1,5 @@
+// backend/config/workflows.js
+
 export const WORKFLOW_STATES = {
   CONSULTATION: "CONSULTATION",
   LAB_ORDERED: "LAB_ORDERED",
@@ -6,21 +8,34 @@ export const WORKFLOW_STATES = {
   DISPENSED: "DISPENSED",
   BILLED: "BILLED",
   PAID: "PAID",
+
+  // SHA / Admin states
+  SHA_PENDING: "SHA_PENDING",
+  SHA_APPROVED: "SHA_APPROVED",
+  SHA_REJECTED: "SHA_REJECTED",
+  ADMIN_OVERRIDE_APPROVE: "ADMIN_OVERRIDE_APPROVE",
+  ADMIN_OVERRIDE_REJECT: "ADMIN_OVERRIDE_REJECT",
 };
-export const WORKFLOW_TRANSITIONS = {
-  // normal flow (example)
-  SHA_PENDING: ["SHA_APPROVED", "SHA_REJECTED"],
 
-  // ADMIN OVERRIDE (global)
-  "*": ["ADMIN_OVERRIDE_APPROVE", "ADMIN_OVERRIDE_REJECT"],
-};
-
-
-export const WORKFLOW_TRANSITIONS = {
+/**
+ * Clinical workflow transitions
+ * (Patient care lifecycle)
+ */
+export const CLINICAL_WORKFLOW_TRANSITIONS = {
   CONSULTATION: ["LAB_ORDERED", "PRESCRIPTION_CREATED"],
   LAB_ORDERED: ["LAB_COMPLETED"],
   LAB_COMPLETED: ["PRESCRIPTION_CREATED"],
   PRESCRIPTION_CREATED: ["DISPENSED"],
   DISPENSED: ["BILLED"],
   BILLED: ["PAID"],
+};
+
+/**
+ * Administrative / Insurance (SHA) transitions
+ */
+export const ADMIN_WORKFLOW_TRANSITIONS = {
+  SHA_PENDING: ["SHA_APPROVED", "SHA_REJECTED"],
+
+  // Admin override allowed from any state
+  "*": ["ADMIN_OVERRIDE_APPROVE", "ADMIN_OVERRIDE_REJECT"],
 };
