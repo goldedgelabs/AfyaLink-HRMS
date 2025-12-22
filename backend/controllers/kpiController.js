@@ -1,15 +1,23 @@
-import { hospitalKPIs } from "../services/kpiService.js";
+import Encounter from "../models/Encounter.js";
+import User from "../models/User.js";
 
 /**
- * KPI CONTROLLER
- * - Delegates to service layer
- * - No business logic
- * - Read-only
+ * GET /api/kpis/hospital
+ * Admin hospital KPI dashboard
  */
-export async function getHospitalKPIs(req, res, next) {
+export const hospitalKPIs = async (req, res) => {
   try {
-    await hospitalKPIs(req, res, next);
-  } catch (err) {
-    next(err);
+    const totalPatients = await User.countDocuments({ role: "patient" });
+    const totalDoctors = await User.countDocuments({ role: "doctor" });
+    const totalEncounters = await Encounter.countDocuments();
+
+    res.json({
+      totalPatients,
+      totalDoctors,
+      totalEncounters,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to fetch hospital KPIs" });
   }
-}
+};
