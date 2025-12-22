@@ -7,36 +7,94 @@ const AT_KEY = process.env.AFRICASTALKING_API_KEY || '';
 const AT_USER = process.env.AFRICASTALKING_USERNAME || '';
 
 let twClient = null;
-if(TW_SID && TW_TOKEN) twClient = Twilio(TW_SID, TW_TOKEN);
+if (TW_SID && TW_TOKEN) {
+  twClient = Twilio(TW_SID, TW_TOKEN);
+}
 
-export async function sendSMS({ provider='twilio', to, message }){
-  if(provider === 'twilio' && twClient){
+/**
+ * Send SMS message
+ */
+export async function sendSMS({ provider = 'twilio', to, message }) {
+  if (provider === 'twilio' && twClient) {
     const from = process.env.TWILIO_NUMBER;
-    const msg = await twClient.messages.create({ body: message, from, to });
-    return { provider:'twilio', sid: msg.sid };
-  }
-  if(provider === 'africastalking' && AT_KEY && AT_USER){
-    const res = await fetch('https://api.africastalking.com/version1/messaging', {
-      method:'POST',
-      headers: { 'Content-Type':'application/x-www-form-urlencoded', 'apiKey': AT_KEY },
-      body: new URLSearchParams({ username: AT_USER, to, message })
+    const msg = await twClient.messages.create({
+      body: message,
+      from,
+      to
     });
-    const js = await res.json();
-    return { provider:'africastalking', result: js };
+    return { provider: 'twilio', sid: msg.sid };
   }
-  // fallback: log
-  console.log('SMS fallback send', provider, to, message);
-  return { provider:'log', to };
+
+  if (provider === 'africastalking' && AT_KEY && AT_USER) {
+    const res = await fetch('https://api.africastalking.com/version1/messaging', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        apiKey: AT_KEY
+      },
+      body: new URLSearchParams({
+        username: AT_USER,
+        to,
+        message
+      })
+    });
+
+    const data = await res.json();
+    return { provider: 'africastalking', result: data };
+  }
+
+  console.log('SMS fallback send:', to, message);
+  return { provider: 'log', to };
 }
 
-export async function sendWhatsApp({ provider='twilio', to, message }){
-  if(provider === 'twilio' && twClient){
+/**
+ * Send WhatsApp message
+ */
+export async function sendWhatsApp({ provider = 'twilio', to, message }) {
+  if (provider === 'twilio' && twClient) {
     const from = 'whatsapp:' + process.env.TWILIO_WHATSAPP_FROM;
-    const msg = await twClient.messages.create({ body: message, from, to: 'whatsapp:' + to });
-    return { provider:'twilio', sid: msg.sid };
+    const msg = await twClient.messages.create({
+      body: message,
+      from,
+      to: 'whatsapp:' + to
+    });
+    return { provider: 'twilio', sid: msg.sid };
   }
-  console.log('WhatsApp fallback', provider, to, message);
-  return { provider:'log' };
+
+  console.log('WhatsApp fallback:', to, message);
+  return { provider: 'log' };
 }
 
-export default { sendSMS, sendWhatsApp };
+/**
+ * Unified patient notification (USED BY WORKFLOWS)
+ */
+export async function notifyPatient({
+  patient,
+  message,
+  channel = 'sms',
+  provider = 'twilio'
+}) {
+  if (!patient || !patient.phone) {
+    throw new Error('Patient with phone number is required');
+  }
+
+  if (channel === 'whatsapp') {
+    return sendWhatsApp({
+      provider,
+      to: patient.phone,
+      message
+    });
+  }
+
+  return sendSMS({
+    provider,
+    to: patient.phone,
+    message
+  });
+}
+
+export default {
+  sendSMS,
+  sendWhatsApp,
+  notifyPatient
+};
