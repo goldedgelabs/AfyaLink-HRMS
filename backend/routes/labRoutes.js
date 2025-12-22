@@ -1,8 +1,12 @@
-import express from 'express';
-import { index, list } from '../controllers/labController.js';
+import express from "express";
+import { completeLab } from "../controllers/labController.js";
+
 const router = express.Router();
 
-router.get('/', index);
-router.get('/list', list);
+/**
+ * LAB WORKFLOW ROUTE
+ * LAB_ORDERED → LAB_COMPLETED
+ */
+router.post("/complete", completeLab);
 
 export default router;
